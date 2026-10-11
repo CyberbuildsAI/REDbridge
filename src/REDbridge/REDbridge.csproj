@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <PackageReference Include="StreamJsonRpc" Version="2.25.29" />
+    <!-- Same version WolvenKit pins, to avoid a mixed set of Microsoft.Extensions assemblies. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
   </ItemGroup>
 
   <!-- WolvenKit's headless libraries, built from the pinned submodule. GPL-3.0. -->
