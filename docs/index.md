@@ -12,7 +12,7 @@ The architecture lives in the REDcode design document, which is not published ye
 
 | Phase | Status |
 |---|---|
-| C0 Decide | Not started |
+| C0 Decide | Done. WolvenKit's headless libraries build on the reference machine; findings in Dev setup |
 | C1 Bridge MVP | Not started |
 | C2 to C5 | Not started |
 

@@ -6,7 +6,8 @@ REDbridge is the .NET process that hosts WolvenKit's headless libraries and expo
 
 - **Design:** settled in the REDcode design document, which the owner holds privately. Ask for it before architectural work. Sections 05 (architecture) and the bridge protocol table are the spec for this repo.
 - **In the repo:** docs site, brand tooling, no code yet.
-- **Next step (C0):** install the .NET 10 SDK, clone WolvenKit at the pinned commit (`4d1716b1`, 9.1.0) with `core.longpaths` on, build `WolvenKit.Core`, `Common`, `RED4` and `Modkit`, and record what the bridge needs in `docs/dev-setup.md`. Then C1: a console app speaking JSON-RPC over stdio with `archive.list`, `cr2w.toJson`, `cr2w.fromJson`, `texture.toPng` and `hash.*`.
+- **C0 done (2026-10-11):** the .NET 10 SDK is installed per-user and WolvenKit's `Core`, `Common`, `RED4` and `Modkit` build at the pinned commit. What the output contains, and the low-memory build flags, are in `docs/dev-setup.md`. Decision: WolvenKit is wired as a git submodule with project references, never as committed binaries.
+- **Next step (C1):** add the submodule, create the solution, and write a console app speaking JSON-RPC over stdio with `archive.list`, `cr2w.toJson`, `cr2w.fromJson`, `texture.toPng` and `hash.*`. Test it against the Cyberpunk install on disk; the game does not need to run.
 
 ## The license boundary
 
