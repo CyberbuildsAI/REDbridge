@@ -97,24 +97,39 @@ The submodule is added in C1. Until then there is nothing to build in this repo.
 
 ## 5. Building and running the bridge
 
+From clone to a working bridge, in order. Verified on both reference machines on 2026-10-11.
+
 ```powershell
-dotnet restore src/REDbridge/REDbridge.csproj
-dotnet build src/REDbridge/REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q
+git clone --recurse-submodules https://github.com/CyberbuildsAI/REDbridge.git
+cd REDbridge
+git submodule update --init      # only needed if external\WolvenKit is empty (plain clone, or after a pull)
+dotnet restore src\REDbridge\REDbridge.csproj
+dotnet build src\REDbridge\REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q
+python -I tools\probe.py (Resolve-Path src\REDbridge\bin\Release\net10.0\REDbridge.exe) "<Cyberpunk 2077 folder>" probe-out
 ```
 
-`-v q` hides the 394 nullability warnings WolvenKit's RED4 project produces; they are expected. The first build compiles the WolvenKit submodule too (about a minute single-threaded). Output: `src/REDbridge/bin/Release/net10.0/REDbridge.exe`, about 200 MB with everything it needs beside it.
+What each step does:
 
-`REDbridge.exe` needs the .NET 10 runtime. With the per-user SDK, set `DOTNET_ROOT` to `%LOCALAPPDATA%\Microsoft\dotnet` in the environment of whatever starts it, or the executable fails to find a runtime.
+| Step | Notes |
+|---|---|
+| `git submodule update --init` | `git pull` and a plain `git clone` do not fetch submodule contents. WolvenKit is large; the first fetch takes a few minutes. If it stops with "Filename too long", run `git config --global core.longpaths true` and repeat |
+| `dotnet restore` | Restores the bridge and the four WolvenKit projects it references. Needs network access the first time |
+| `dotnet build` | Builds WolvenKit's `Core`, `RED4`, `Common` and `Modkit` from the submodule, then the bridge. About 45 s to a minute single-threaded. `-v q` hides the 394 nullability warnings from WolvenKit's RED4 project, which are expected. Output: `src\REDbridge\bin\Release\net10.0\REDbridge.exe` with about 200 MB beside it |
+| `tools\probe.py` | Starts the bridge with the game folder, loads the archive indexes (the game does not need to be running) and calls every method: list and search, CR2W to JSON and back with a byte comparison, texture to PNG, hashing. About 5 to 8 s. Output goes to `probe-out`, which git ignores |
+
+Do not build the WolvenKit projects on their own with paths like `WolvenKit.Modkit/WolvenKit.Modkit.csproj`; those paths exist only inside `external\WolvenKit`, and the bridge build covers them.
+
+### .NET runtime location
+
+With a machine-wide SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`) nothing more is needed. With the per-user SDK from section 2, `REDbridge.exe` needs `DOTNET_ROOT` in the environment of whatever starts it, or it fails to find a runtime:
 
 ```powershell
 $env:DOTNET_ROOT = "$env:LOCALAPPDATA\Microsoft\dotnet"
-python -I tools\probe.py (Resolve-Path src\REDbridge\bin\Release
-et10.0\REDbridge.exe) "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077" probe-out
 ```
 
-The probe starts the bridge, loads the game's archive indexes (the game does not need to be running), and calls every method: it lists and searches files, converts a CR2W file to JSON and back and checks the bytes match, decodes a texture to PNG and resolves a hash. On the reference machine it finishes in about 7 seconds, 4.3 of them the archive index.
+### Oodle
 
-On first run the bridge copies the game's `oo2ext_7_win64.dll` (Oodle) to `%LOCALAPPDATA%` and loads it from there, as WolvenKit does. Without it WolvenKit falls back to the bundled `kraken.dll` and warns that results may differ.
+On first run the bridge copies the game's `oo2ext_7_win64.dll` to `%LOCALAPPDATA%` and loads it from there, as WolvenKit does, and logs "Using the game's Oodle library". Without it WolvenKit falls back to the bundled `kraken.dll` and warns that results may differ.
 
 ## 6. Docs site and brand images
 

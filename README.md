@@ -53,6 +53,18 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | `tools/probe.py` | Stdlib Python client that runs every method over the real protocol |
 | `external/WolvenKit/` | WolvenKit as a git submodule, pinned to 9.1.0 |
 
+## Build
+
+```powershell
+git clone --recurse-submodules https://github.com/CyberbuildsAI/REDbridge.git
+cd REDbridge
+dotnet restore src\REDbridge\REDbridge.csproj
+dotnet build src\REDbridge\REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q
+python -I tools\probe.py (Resolve-Path src\REDbridge\bin\Release\net10.0\REDbridge.exe) "<Cyberpunk 2077 folder>" probe-out
+```
+
+Needs the .NET 10 SDK and Python 3. The build compiles WolvenKit from the submodule, so the first run takes about a minute. The probe loads the game's archive indexes and exercises every method; the game does not need to be running. Details, including the per-user SDK route without administrator rights, are in the [setup guide](https://cyberbuildsai.github.io/REDbridge/dev-setup.html).
+
 ## Roadmap
 
 - **C0 Decide.** Build WolvenKit's headless libraries locally and confirm what the bridge references. Agree the approach with the WolvenKit team.
