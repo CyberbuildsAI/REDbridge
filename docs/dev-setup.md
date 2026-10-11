@@ -53,16 +53,15 @@ Headless projects: `WolvenKit.Core`, `WolvenKit.Common`, `WolvenKit.RED4`, `Wolv
 
 ### Building the libraries
 
-Verified on the reference machine with SDK 10.0.401. Build one project at a time with parallelism off and without the shared compiler server: the parallel build was killed for lack of memory on the 16 GB laptop, and the single-threaded build is fast anyway.
+The submodule is not built on its own. Building the bridge (section 5) builds `Core`, `RED4`, `Common` and `Modkit` from `external/WolvenKit` as project references. After a plain `git clone`, fetch the submodule first:
 
 ```powershell
-dotnet restore WolvenKit.Modkit/WolvenKit.Modkit.csproj
-foreach ($p in 'WolvenKit.RED4','WolvenKit.Common','WolvenKit.Modkit') {
-  dotnet build "$p/$p.csproj" -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false
-}
+git submodule update --init
 ```
 
-| Project | Build time | Output |
+Build one project at a time with parallelism off and without the shared compiler server: the parallel build was killed for lack of memory on the 16 GB laptop, and the single-threaded build is fast anyway. These flags are already in the bridge build command in section 5.
+
+| Project | Build time (single-threaded) | Output |
 |---|---|---|
 | WolvenKit.Core | seconds | 0.1 MB |
 | WolvenKit.RED4 | 39 s | 11.6 MB |
