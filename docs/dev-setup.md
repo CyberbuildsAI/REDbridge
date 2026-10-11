@@ -9,7 +9,8 @@ Reference machine: Windows 11 Home (build 26200), 16 GB RAM, no administrator se
 | Tool | Version used | Why | Install |
 |---|---|---|---|
 | Git for Windows | 2.55.0 | Source control | `winget install --id Git.Git -e` |
-| Python | 3.14.6 | Brand tooling, small scripts | Any Python 3.10 or later |
+| Node.js | 24 | Runs the npm scripts that wrap the build | `winget install --id CoreyButler.NVMforWindows -e`, then `nvm install 24` |
+| Python | 3.14.6 | The probe, brand tooling | Any Python 3.10 or later |
 | Chrome or Edge | any | Renders the brand images | Already present on Windows |
 
 Git needs long paths on Windows, because WolvenKit's generated type files exceed the default limit. Without it a clone stops with "Filename too long" and leaves the checkout incomplete.
@@ -97,27 +98,32 @@ The submodule is added in C1. Until then there is nothing to build in this repo.
 
 ## 5. Building and running the bridge
 
-From clone to a working bridge, in order. Verified on both reference machines on 2026-10-11.
+From clone to a working bridge. Verified on both reference machines on 2026-10-11.
 
 ```powershell
 git clone --recurse-submodules https://github.com/CyberbuildsAI/REDbridge.git
 cd REDbridge
-git submodule update --init      # only needed if external\WolvenKit is empty (plain clone, or after a pull)
-dotnet restore src\REDbridge\REDbridge.csproj
-dotnet build src\REDbridge\REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q
-python -I tools\probe.py (Resolve-Path src\REDbridge\bin\Release\net10.0\REDbridge.exe) "<Cyberpunk 2077 folder>" probe-out
+npm run build:full                              # dotnet restore, then dotnet build
+npm run probe -- "<Cyberpunk 2077 folder>"      # runs tools\probe.py against the Release build
 ```
 
-What each step does:
+Day to day:
 
-| Step | Notes |
+| Script | Runs |
 |---|---|
-| `git submodule update --init` | `git pull` and a plain `git clone` do not fetch submodule contents. WolvenKit is large; the first fetch takes a few minutes. If it stops with "Filename too long", run `git config --global core.longpaths true` and repeat |
-| `dotnet restore` | Restores the bridge and the four WolvenKit projects it references. Needs network access the first time |
-| `dotnet build` | Builds WolvenKit's `Core`, `RED4`, `Common` and `Modkit` from the submodule, then the bridge. About 45 s to a minute single-threaded. `-v q` hides the 394 nullability warnings from WolvenKit's RED4 project, which are expected. Output: `src\REDbridge\bin\Release\net10.0\REDbridge.exe` with about 200 MB beside it |
-| `tools\probe.py` | Starts the bridge with the game folder, loads the archive indexes (the game does not need to be running) and calls every method: list and search, CR2W to JSON and back with a byte comparison, texture to PNG, hashing. About 5 to 8 s. Output goes to `probe-out`, which git ignores |
+| `npm run build` | `dotnet build src\REDbridge\REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q` |
+| `npm run build:full` | `dotnet restore`, then `npm run build`. Needed after a clone or when packages change |
+| `npm run update` | `git pull --recurse-submodules`, `git submodule update --init`, then `npm run build:full` |
+| `npm run probe -- "<game folder>"` | `python -I tools\probe.py src\REDbridge\bin\Release\net10.0\REDbridge.exe "<game folder>"` |
+| `npm run clean` | `dotnet clean` |
 
-Do not build the WolvenKit projects on their own with paths like `WolvenKit.Modkit/WolvenKit.Modkit.csproj`; those paths exist only inside `external\WolvenKit`, and the bridge build covers them.
+Notes:
+
+- `git pull` and a plain `git clone` do not fetch submodule contents; `npm run update` and `git submodule update --init` do. WolvenKit is large, so the first fetch takes a few minutes. If it stops with "Filename too long", run `git config --global core.longpaths true` and repeat.
+- The build compiles WolvenKit's `Core`, `RED4`, `Common` and `Modkit` from the submodule, then the bridge: about 45 s to a minute single-threaded. `-v q` hides the 394 nullability warnings from WolvenKit's RED4 project, which are expected. Output: `src\REDbridge\bin\Release\net10.0\REDbridge.exe` with about 200 MB beside it.
+- The probe starts the bridge with the game folder, loads the archive indexes (the game does not need to be running) and calls every method: list and search, CR2W to JSON and back with a byte comparison, texture to PNG, hashing. About 5 to 8 s. Output goes to `probe-out`, which git ignores.
+- Do not build the WolvenKit projects on their own with paths like `WolvenKit.Modkit/WolvenKit.Modkit.csproj`; those paths exist only inside `external\WolvenKit`, and the bridge build covers them.
+- The REDcode extension checks the bridge's version at startup and says when the bridge is older than it needs. `npm run update` here fixes that.
 
 ### .NET runtime location
 

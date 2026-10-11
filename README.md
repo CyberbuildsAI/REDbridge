@@ -58,12 +58,11 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 ```powershell
 git clone --recurse-submodules https://github.com/CyberbuildsAI/REDbridge.git
 cd REDbridge
-dotnet restore src\REDbridge\REDbridge.csproj
-dotnet build src\REDbridge\REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q
-python -I tools\probe.py (Resolve-Path src\REDbridge\bin\Release\net10.0\REDbridge.exe) "<Cyberpunk 2077 folder>" probe-out
+npm run build:full                              # restore, then build
+npm run probe -- "<Cyberpunk 2077 folder>"      # exercise every method against a game install
 ```
 
-Needs the .NET 10 SDK and Python 3. The build compiles WolvenKit from the submodule, so the first run takes about a minute. The probe loads the game's archive indexes and exercises every method; the game does not need to be running. Details, including the per-user SDK route without administrator rights, are in the [setup guide](https://cyberbuildsai.github.io/REDbridge/dev-setup.html).
+Later, `npm run update` pulls, updates the submodule and rebuilds, and `npm run build` rebuilds after local changes. The scripts only wrap `dotnet` and `git`; `package.json` shows the exact commands. Needs the .NET 10 SDK, Node and Python 3. Details, including the per-user SDK route without administrator rights, are in the [setup guide](https://cyberbuildsai.github.io/REDbridge/dev-setup.html).
 
 ## Roadmap
 

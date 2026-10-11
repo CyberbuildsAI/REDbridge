@@ -22,3 +22,6 @@ external/WolvenKit/**/obj/
 
 # probe output written by tools/probe.py
 probe-out/
+
+# npm wrapper has no dependencies, but keep the folder out anyway
+node_modules/

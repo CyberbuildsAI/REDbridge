@@ -1,0 +1,17 @@
+{
+  "name": "redbridge-workspace",
+  "private": true,
+  "license": "GPL-3.0",
+  "description": "npm front door for the .NET build. Each script runs the dotnet or git command it wraps.",
+  "scripts": {
+    "restore": "dotnet restore src/REDbridge/REDbridge.csproj",
+    "build": "dotnet build src/REDbridge/REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q",
+    "build:full": "npm run restore && npm run build",
+    "update": "git pull --recurse-submodules && git submodule update --init && npm run build:full",
+    "probe": "python -I tools/probe.py src/REDbridge/bin/Release/net10.0/REDbridge.exe",
+    "clean": "dotnet clean src/REDbridge/REDbridge.csproj -c Release -v q"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

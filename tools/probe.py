@@ -1,6 +1,7 @@
 """Exercises the bridge over its real protocol: JSON-RPC 2.0, Content-Length framed, on stdio.
 
     python -I tools/probe.py <path to REDbridge.exe or .dll> "<Cyberpunk 2077 folder>" [out dir]
+    npm run probe -- "<Cyberpunk 2077 folder>"        (same thing, using the Release build)
 
 Standard library only. The bridge's stderr log is passed through.
 """
@@ -13,6 +14,7 @@ import time
 
 class Bridge:
     def __init__(self, exe, game):
+        exe = os.path.abspath(exe)
         cmd = ([exe] if exe.lower().endswith(".exe") else ["dotnet", exe]) + ["--game", game]
         self.p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=sys.stderr)
         self.n = 0
