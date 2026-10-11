@@ -13,3 +13,9 @@ dist/
 *.dll
 *.exe
 rtti-dump*
+
+# build output of the bridge and the submodule
+src/**/bin/
+src/**/obj/
+external/WolvenKit/**/bin/
+external/WolvenKit/**/obj/

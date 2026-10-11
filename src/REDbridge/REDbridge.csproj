@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>REDbridge</RootNamespace>
+    <AssemblyName>REDbridge</AssemblyName>
+    <Version>0.1.0</Version>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StreamJsonRpc" Version="2.25.29" />
+  </ItemGroup>
+
+  <!-- WolvenKit's headless libraries, built from the pinned submodule. GPL-3.0. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.Core\WolvenKit.Core.csproj" />
+    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.RED4\WolvenKit.RED4.csproj" />
+    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.Common\WolvenKit.Common.csproj" />
+    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.Modkit\WolvenKit.Modkit.csproj" />
+  </ItemGroup>
+
+</Project>

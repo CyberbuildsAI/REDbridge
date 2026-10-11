@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/external/" />
+  <Folder Name="/external/WolvenKit/">
+    <Project Path="external/WolvenKit/WolvenKit.Common/WolvenKit.Common.csproj" />
+    <Project Path="external/WolvenKit/WolvenKit.Core/WolvenKit.Core.csproj" />
+    <Project Path="external/WolvenKit/WolvenKit.Modkit/WolvenKit.Modkit.csproj" />
+    <Project Path="external/WolvenKit/WolvenKit.RED4/WolvenKit.RED4.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/REDbridge/REDbridge.csproj" />
+  </Folder>
+</Solution>
