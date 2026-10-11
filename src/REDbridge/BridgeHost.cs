@@ -45,6 +45,23 @@ public sealed class BridgeHost
     /// <summary>The game folder the archives were loaded from, or null before <see cref="LoadGame"/>.</summary>
     public string? GameDir { get; private set; }
 
+    private ArchiveTree? _tree;
+
+    /// <summary>The folder index over the loaded archives, built on first use.</summary>
+    public ArchiveTree Tree
+    {
+        get
+        {
+            if (_tree is null)
+            {
+                var started = DateTime.Now;
+                _tree = ArchiveTree.Build(Archives.GetGameArchives());
+                Log.Info($"Folder index built in {(DateTime.Now - started).TotalMilliseconds:F0} ms");
+            }
+            return _tree;
+        }
+    }
+
     /// <summary>
     /// Loads the base game and Phantom Liberty archives from a Cyberpunk 2077 install.
     /// Only the archive indexes are read, so the game does not need to be running.
@@ -68,6 +85,7 @@ public sealed class BridgeHost
         Hashes.Loaded.GetAwaiter().GetResult();
         Archives.LoadGameArchives(exe);
         GameDir = gameDir;
+        _tree = null;
 
         var files = Archives.GetGameArchives().Sum(a => a.Files.Count);
         Log.Info($"Loaded {Archives.GetGameArchives().Count()} archives, {files:N0} files, in {(DateTime.Now - started).TotalSeconds:F1} s");

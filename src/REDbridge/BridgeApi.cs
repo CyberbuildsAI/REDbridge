@@ -88,6 +88,24 @@ public sealed class BridgeApi
         return new FileList(hits.Count, hits.Take(limit).Select(f => ToDto(f, f.GetArchive().Name)).ToList());
     }
 
+    public sealed record FolderInfo(string Name, string Path, int Files);
+    public sealed record TreeResult(string Path, IReadOnlyList<FolderInfo> Folders, IReadOnlyList<FileInfoDto> Files);
+
+    /// <summary>
+    /// One level of the archive folder tree: the subfolders of <paramref name="path"/> with their
+    /// recursive file counts, and the files directly in it. An empty path is the root.
+    /// </summary>
+    [JsonRpcMethod("archive.tree")]
+    public TreeResult Tree(string path = "")
+    {
+        RequireGame();
+        var folder = _host.Tree.Find(path) ?? throw new DirectoryNotFoundException($"'{path}' is not a folder in the loaded archives");
+        var normalized = path.Replace('/', '\\').Trim('\\');
+        var folders = folder.Folders.Select(kv => new FolderInfo(kv.Key, normalized.Length == 0 ? kv.Key : $"{normalized}\\{kv.Key}", kv.Value.Count)).ToList();
+        var files = folder.Files.OrderBy(x => x.file.Name, StringComparer.OrdinalIgnoreCase).Select(x => ToDto(x.file, x.archive)).ToList();
+        return new TreeResult(normalized, folders, files);
+    }
+
     public sealed record ExtractResult(string File, long Bytes);
 
     [JsonRpcMethod("archive.extract")]
@@ -98,6 +116,32 @@ public sealed class BridgeApi
         using var fs = File.Create(outFile);
         file.Extract(fs);
         return new ExtractResult(Path.GetFullPath(outFile), fs.Length);
+    }
+
+    public sealed record ExtractItem(string Path, string OutFile);
+    public sealed record ExtractManyResult(int Extracted, long Bytes, IReadOnlyList<string> Failed);
+
+    /// <summary>Extracts many files in one call. Files that fail are listed, the rest still succeed.</summary>
+    [JsonRpcMethod("archive.extractMany")]
+    public ExtractManyResult ExtractMany(IReadOnlyList<ExtractItem> items)
+    {
+        var failed = new List<string>();
+        long bytes = 0;
+        var count = 0;
+        foreach (var item in items)
+        {
+            try
+            {
+                bytes += Extract(item.Path, item.OutFile).Bytes;
+                count++;
+            }
+            catch (Exception e)
+            {
+                _host.Log.Warning($"extract {item.Path}: {e.Message}");
+                failed.Add(item.Path);
+            }
+        }
+        return new ExtractManyResult(count, bytes, failed);
     }
 
     // ---- cr2w -----------------------------------------------------------------------------
@@ -121,6 +165,22 @@ public sealed class BridgeApi
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outFile))!);
         File.WriteAllText(outFile, json);
         return new JsonResult(file.Name, Hash(file.Key), Path.GetFullPath(outFile), new FileInfo(outFile).Length, null);
+    }
+
+    /// <summary>Converts a CR2W file on disk (for example one in a project's source/archive) to JSON.</summary>
+    [JsonRpcMethod("cr2w.fileToJson")]
+    public JsonResult FileToJson(string file, string? outFile = null)
+    {
+        using var fs = File.OpenRead(file);
+        var cr2w = _host.Parser.ReadRed4File(fs) ?? throw new InvalidDataException($"'{file}' is not a CR2W file");
+        var json = RedJsonSerializer.Serialize(new RedFileDto(cr2w));
+        if (outFile is null)
+        {
+            return new JsonResult(file, "", null, json.Length, json);
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outFile))!);
+        File.WriteAllText(outFile, json);
+        return new JsonResult(file, "", Path.GetFullPath(outFile), new FileInfo(outFile).Length, null);
     }
 
     /// <summary>Writes a CR2W file from WolvenKit JSON, given inline or as a file path.</summary>
