@@ -19,3 +19,6 @@ src/**/bin/
 src/**/obj/
 external/WolvenKit/**/bin/
 external/WolvenKit/**/obj/
+
+# probe output written by tools/probe.py
+probe-out/

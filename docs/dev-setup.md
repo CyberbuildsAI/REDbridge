@@ -99,10 +99,10 @@ The submodule is added in C1. Until then there is nothing to build in this repo.
 
 ```powershell
 dotnet restore src/REDbridge/REDbridge.csproj
-dotnet build src/REDbridge/REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false
+dotnet build src/REDbridge/REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q
 ```
 
-The first build compiles the WolvenKit submodule too (about a minute single-threaded). Output: `src/REDbridge/bin/Release/net10.0/REDbridge.exe`, about 200 MB with everything it needs beside it.
+`-v q` hides the 394 nullability warnings WolvenKit's RED4 project produces; they are expected. The first build compiles the WolvenKit submodule too (about a minute single-threaded). Output: `src/REDbridge/bin/Release/net10.0/REDbridge.exe`, about 200 MB with everything it needs beside it.
 
 `REDbridge.exe` needs the .NET 10 runtime. With the per-user SDK, set `DOTNET_ROOT` to `%LOCALAPPDATA%\Microsoft\dotnet` in the environment of whatever starts it, or the executable fails to find a runtime.
 
