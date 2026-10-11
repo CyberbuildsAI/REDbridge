@@ -109,7 +109,7 @@ The first build compiles the WolvenKit submodule too (about a minute single-thre
 
 ```powershell
 $env:DOTNET_ROOT = "$env:LOCALAPPDATA\Microsoft\dotnet"
-python -I tools\probe.py (Resolve-Path src\REDbridgein\Release
+python -I tools\probe.py (Resolve-Path src\REDbridge\bin\Release
 et10.0\REDbridge.exe) "C:\Program Files (x86)\Steam\steamapps\common\Cyberpunk 2077" probe-out
 ```
 
