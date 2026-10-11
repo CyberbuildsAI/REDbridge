@@ -123,6 +123,7 @@ Notes:
 - The build compiles WolvenKit's `Core`, `RED4`, `Common` and `Modkit` from the submodule, then the bridge: about 45 s to a minute single-threaded. `-v q` hides the 394 nullability warnings from WolvenKit's RED4 project, which are expected. Output: `src\REDbridge\bin\Release\net10.0\REDbridge.exe` with about 200 MB beside it.
 - The probe starts the bridge with the game folder, loads the archive indexes (the game does not need to be running) and calls every method: list and search, CR2W to JSON and back with a byte comparison, texture to PNG, hashing. About 5 to 8 s. Output goes to `probe-out`, which git ignores.
 - Do not build the WolvenKit projects on their own with paths like `WolvenKit.Modkit/WolvenKit.Modkit.csproj`; those paths exist only inside `external\WolvenKit`, and the bridge build covers them.
+- The npm scripts run `dotnet` through `tools/dotnet.mjs`, which prefers `DOTNET_ROOT`, then the per-user SDK in `%LOCALAPPDATA%\Microsoft\dotnet`, then `dotnet` on `PATH`. So the per-user install from section 2 works without changing `PATH`. The probe still needs `DOTNET_ROOT` for the per-user runtime (next section).
 - The REDcode extension checks the bridge's version at startup and says when the bridge is older than it needs. `npm run update` here fixes that.
 
 ### .NET runtime location
