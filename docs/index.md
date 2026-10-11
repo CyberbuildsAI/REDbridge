@@ -1,4 +1,4 @@
-# REDbridge docs
+# RED<span class="y">bridge</span> docs
 
 REDbridge hosts WolvenKit's engine in a local process and exposes it over JSON-RPC to REDcode and to AI assistants. These pages track its setup and, once it exists, its protocol.
 
