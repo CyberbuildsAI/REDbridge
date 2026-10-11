@@ -17,7 +17,7 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 **[Read the docs](https://cyberbuildsai.github.io/REDbridge/)** &middot; [REDcode](https://github.com/CyberbuildsAI/REDcode) &middot; [REDnode](https://github.com/CyberbuildsAI/REDnode)
 
 > [!NOTE]
-> **Status: design phase.** Nothing runs yet. The protocol and the method groups are settled in the REDcode design; the first milestone is a bridge that lists an archive and converts one file.
+> **Status: C1 bridge MVP works.** The bridge indexes a game install, lists and searches archives, converts CR2W files to JSON and back byte for byte, decodes textures to PNG and resolves hashes, all over JSON-RPC on stdio. `tools/probe.py` exercises it against a real install in about seven seconds. Next: the REDcode extension that talks to it.
 
 ## How it works
 
@@ -49,7 +49,9 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 |---|---|
 | `docs/` | Documentation site |
 | `tools/brand/` | Generates the banner, badges and icon |
-| `src/` | The bridge (not started) |
+| `src/REDbridge/` | The bridge: host, RPC surface, stderr logger |
+| `tools/probe.py` | Stdlib Python client that runs every method over the real protocol |
+| `external/WolvenKit/` | WolvenKit as a git submodule, pinned to 9.1.0 |
 
 ## Roadmap
 

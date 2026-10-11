@@ -13,7 +13,7 @@ The architecture lives in the REDcode design document, which is not published ye
 | Phase | Status |
 |---|---|
 | C0 Decide | Done. WolvenKit's headless libraries build on the reference machine; findings in Dev setup |
-| C1 Bridge MVP | Not started |
-| C2 to C5 | Not started |
+| C1 Bridge MVP | Done. The bridge answers every planned method over stdio; verified against a game install with `tools/probe.py` |
+| C2 to C5 | Not started. Next is the REDcode extension that spawns the bridge |
 
 Source code and issues: [github.com/CyberbuildsAI/REDbridge](https://github.com/CyberbuildsAI/REDbridge)
