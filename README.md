@@ -1,0 +1,73 @@
+<p align="center">
+  <img src="docs/assets/brand/banner.png" alt="REDbridge: hosts WolvenKit's engine behind JSON-RPC for REDcode and AI assistants. Engine WolvenKit C#, protocol JSON-RPC over stdio, clients REDcode and MCP." width="100%">
+</p>
+
+<p align="center">
+  <a href="https://cyberbuildsai.github.io/REDbridge/"><img src="docs/assets/brand/badges/docs.svg" alt="docs: read the docs"></a>
+  <img src="docs/assets/brand/badges/status.svg" alt="status: design phase">
+  <img src="docs/assets/brand/badges/wolvenkit.svg" alt="WolvenKit: 9.1">
+  <img src="docs/assets/brand/badges/dotnet.svg" alt=".NET: 10">
+  <a href="LICENSE"><img src="docs/assets/brand/badges/license.svg" alt="license: GPL-3.0"></a>
+</p>
+
+The engine host for [REDcode](https://github.com/CyberbuildsAI/REDcode), a Cyberpunk 2077 modding IDE built on VS Code.
+
+REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C# libraries in a local process and exposes them over JSON-RPC: archive browsing, CR2W files as JSON and back, texture, mesh and audio conversion, TweakDB queries, import, export and packing. REDcode's extensions are its first client. An MCP server over the same methods lets AI assistants work a mod project through it too.
+
+**[Read the docs](https://cyberbuildsai.github.io/REDbridge/)** &middot; [REDcode](https://github.com/CyberbuildsAI/REDcode) &middot; [REDnode](https://github.com/CyberbuildsAI/REDnode)
+
+> [!NOTE]
+> **Status: design phase.** Nothing runs yet. The protocol and the method groups are settled in the REDcode design; the first milestone is a bridge that lists an archive and converts one file.
+
+## How it works
+
+```
+ VS Code (REDcode extensions)      REDbridge (.NET 10)                 WolvenKit libraries
+ ┌───────────────────────────┐     ┌────────────────────────────┐     ┌────────────────────┐
+ │ archive browser           │     │ JSON-RPC 2.0 over stdio    │     │ RED4: CR2W, archives│
+ │ CR2W editor               │◄───►│ method groups: archive,    │◄───►│ Common: JSON, DDS   │
+ │ import / export / pack    │     │ cr2w, convert, modkit,     │     │ Modkit: glTF, pack  │
+ │ AI assistants via MCP     │     │ tweakdb, hash, script, mcp │     │ Core: Oodle, hashes │
+ └───────────────────────────┘     └────────────────────────────┘     └────────────────────┘
+                                    big outputs (PNG, glTF, WAV) go to a cache folder; RPC returns paths
+```
+
+| Method group | Examples | Backed by |
+|---|---|---|
+| `archive` | list, search, extract, conflicts | WolvenKit.RED4 |
+| `cr2w` | toJson, fromJson, getChunk, patch, createInstance | WolvenKit.RED4, WolvenKit.Common |
+| `convert` | texture.toPng, mesh.toGltf, audio.toWav | WolvenKit.Common, WolvenKit.Modkit |
+| `modkit` | import, export, pack, build | WolvenKit.Modkit |
+| `tweakdb` | records, record, flats, query | WolvenKit.RED4 |
+| `hash` | fnv1a64, resolve | WolvenKit.Core |
+| `script` | run a `wkit`-compatible script | ClearScript V8 |
+| `mcp` | the same methods for AI assistants | REDbridge |
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `docs/` | Documentation site |
+| `tools/brand/` | Generates the banner, badges and icon |
+| `src/` | The bridge (not started) |
+
+## Roadmap
+
+- **C0 Decide.** Build WolvenKit's headless libraries locally and confirm what the bridge references. Agree the approach with the WolvenKit team.
+- **C1 Bridge MVP.** `archive.list`, `cr2w.toJson`, `cr2w.fromJson`, `texture.toPng`, `hash.*` over stdio. Proves the data path with REDcode.
+- **C2 to C4.** Method groups for browsing, editing, import, export and packing, as REDcode's extensions need them.
+- **C5.** Script host and MCP server.
+
+Phases follow the REDcode roadmap.
+
+## Compatibility goals
+
+REDbridge pins a WolvenKit version and tracks its releases. Changes that make WolvenKit's libraries easier to host are sent upstream. Windows only for now, because WolvenKit's texture tooling is.
+
+## Legal
+
+REDbridge links WolvenKit's libraries, which are GPL-3.0, so REDbridge is GPL-3.0. REDcode's extensions talk to it only over stdio and keep their own license. This repository contains no game files and no data extracted from them. Single-player modding only.
+
+## License
+
+[GPL-3.0](LICENSE)

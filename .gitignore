@@ -1,0 +1,15 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.binlog
+artifacts/
+dist/
+
+# never commit game files, WolvenKit binaries, or data extracted from the game
+*.archive
+*.dll
+*.exe
+rtti-dump*
