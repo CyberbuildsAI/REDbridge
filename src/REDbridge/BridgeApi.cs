@@ -210,6 +210,18 @@ public sealed class BridgeApi
         return new ExtractResult(Path.GetFullPath(outFile), new FileInfo(outFile).Length);
     }
 
+    /// <summary>Converts a texture file on disk (for example one in a project's source/archive) to PNG.</summary>
+    [JsonRpcMethod("texture.fileToPng")]
+    public ExtractResult FileToPng(string file, string outFile)
+    {
+        using var fs = File.OpenRead(file);
+        var cr2w = _host.Parser.ReadRed4File(fs) ?? throw new InvalidDataException($"'{file}' is not a CR2W file");
+        using var image = RedImage.FromRedFile(cr2w);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outFile))!);
+        image.SaveToPNG(outFile);
+        return new ExtractResult(Path.GetFullPath(outFile), new FileInfo(outFile).Length);
+    }
+
     // ---- hash -----------------------------------------------------------------------------
 
     public sealed record HashResult(string Value, string Hash, string Hex);
