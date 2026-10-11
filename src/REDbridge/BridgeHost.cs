@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WolvenKit.Common;
 using WolvenKit.Common.Interfaces;
 using WolvenKit.Common.Services;
+using WolvenKit.Core.Compression;
 using WolvenKit.Core.Interfaces;
 using WolvenKit.Core.Services;
 using WolvenKit.Modkit.RED4;
@@ -57,6 +58,13 @@ public sealed class BridgeHost
         }
 
         var started = DateTime.Now;
+
+        // WolvenKit copies the game's Oodle library to the user's local app data and loads it from
+        // there. Without it, it falls back to kraken.dll and warns that results may differ.
+        var oodle = Path.Combine(exe.DirectoryName!, "oo2ext_7_win64.dll");
+        Oodle.Load(File.Exists(oodle) ? oodle : null);
+        Log.Info(CompressionSettings.Get().UseOodle ? "Using the game's Oodle library" : "Oodle not available, using kraken.dll");
+
         Hashes.Loaded.GetAwaiter().GetResult();
         Archives.LoadGameArchives(exe);
         GameDir = gameDir;

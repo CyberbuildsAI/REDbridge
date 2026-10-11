@@ -57,13 +57,18 @@ public sealed class BridgeApi
             .ToList();
     }
 
-    /// <summary>Pages through the files of one archive, or of every game archive, optionally filtered by a name prefix.</summary>
+    /// <summary>
+    /// Pages through the files of one archive, or of every game archive, optionally filtered by a
+    /// name prefix. <paramref name="archive"/> is a name or an absolute path; names repeat across
+    /// the base game and Phantom Liberty, so the path is the unambiguous form.
+    /// </summary>
     [JsonRpcMethod("archive.list")]
     public FileList List(string? archive = null, string? prefix = null, int offset = 0, int limit = 500)
     {
         RequireGame();
         limit = Math.Clamp(limit, 1, 5000);
-        var archives = _host.Archives.GetGameArchives().Where(a => archive is null || a.Name == archive);
+        var archives = _host.Archives.GetGameArchives()
+            .Where(a => archive is null || a.Name == archive || string.Equals(a.ArchiveAbsolutePath, archive, StringComparison.OrdinalIgnoreCase));
         var query = archives.SelectMany(a => a.Files.Values.Select(f => (file: f, archive: a.Name)));
         if (!string.IsNullOrEmpty(prefix))
         {
