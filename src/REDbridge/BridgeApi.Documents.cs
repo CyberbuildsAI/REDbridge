@@ -467,4 +467,116 @@ public sealed partial class BridgeApi
                 throw new ArgumentException($"'{path}': cannot set '{last}' under a {KindOf(parent)}");
         }
     }
+
+    // ---- types ---------------------------------------------------------------------------
+
+    public sealed record PropertyDescription(string Name, string Type, string Kind, JsonElement? Default, IReadOnlyList<string>? EnumValues, string? ElementType);
+    public sealed record TypeDescription(string Type, string Kind, string? BaseType, IReadOnlyList<PropertyDescription>? Properties, IReadOnlyList<string>? EnumValues, string? ElementType);
+
+    private readonly Dictionary<string, TypeDescription> _typeCache = new();
+
+    /// <summary>
+    /// What a RED type is made of: for a class its properties with types, kinds and defaults; for an
+    /// enum or bit field its values; for an array or handle its element type. Drives the property grid.
+    /// </summary>
+    [JsonRpcMethod("cr2w.describeType")]
+    public TypeDescription DescribeType(string type)
+    {
+        if (_typeCache.TryGetValue(type, out var cached))
+        {
+            return cached;
+        }
+        var (cs, _) = RedReflection.GetCSTypeFromRedType(type);
+        var description = Describe(cs);
+        _typeCache[type] = description;
+        return description;
+    }
+
+    /// <summary>A default instance of a RED type, in JSON form, for adding array items and filling handles.</summary>
+    [JsonRpcMethod("cr2w.createInstance")]
+    public JsonElement CreateInstance(string type)
+    {
+        var (cs, _) = RedReflection.GetCSTypeFromRedType(type);
+        object instance = typeof(RedBaseClass).IsAssignableFrom(cs) ? RedTypeManager.CreateAndInit(cs) : RedTypeManager.CreateRedType(cs);
+        return ToElement(instance);
+    }
+
+    private static TypeDescription Describe(Type cs)
+    {
+        var name = RedName(cs);
+        var kind = KindOfType(cs);
+        switch (kind)
+        {
+            case "class":
+            {
+                var properties = new List<PropertyDescription>();
+                foreach (var p in RedReflection.GetTypeInfo(cs).PropertyInfos)
+                {
+                    if (p.RedName is null || p.Name == "Appendix")
+                    {
+                        continue;
+                    }
+                    JsonElement? def = null;
+                    try
+                    {
+                        var value = RedReflection.GetClassDefaultValue(cs, p);
+                        if (value is not null)
+                        {
+                            def = ToElement(value);
+                        }
+                    }
+                    catch
+                    {
+                        // No default for this property: the grid falls back to createInstance.
+                    }
+                    properties.Add(new PropertyDescription(p.RedName, RedName(p.Type), KindOfType(p.Type), def, EnumValuesOf(p.Type), ElementTypeOf(p.Type)));
+                }
+                var baseType = cs.BaseType is not null && cs.BaseType != typeof(RedBaseClass) && typeof(RedBaseClass).IsAssignableFrom(cs.BaseType) ? RedName(cs.BaseType) : null;
+                return new TypeDescription(name, kind, baseType, properties, null, null);
+            }
+            case "enum":
+            case "flags":
+                return new TypeDescription(name, kind, null, null, EnumValuesOf(cs), null);
+            default:
+                return new TypeDescription(name, kind, null, null, null, ElementTypeOf(cs));
+        }
+    }
+
+    private static string RedName(Type cs)
+    {
+        try { return RedReflection.GetRedTypeFromCSType(cs); }
+        catch { return cs.Name; }
+    }
+
+    private static string KindOfType(Type cs)
+    {
+        if (typeof(RedBaseClass).IsAssignableFrom(cs)) return "class";
+        if (typeof(IRedBaseHandle).IsAssignableFrom(cs)) return "handle";
+        if (typeof(IRedArray).IsAssignableFrom(cs) || typeof(IRedArrayFixedSize).IsAssignableFrom(cs)) return "array";
+        if (typeof(IRedBufferWrapper).IsAssignableFrom(cs)) return "buffer";
+        if (cs.IsGenericType && cs.GetGenericTypeDefinition().Name.StartsWith("CBitField", StringComparison.Ordinal)) return "flags";
+        if (typeof(IRedEnum).IsAssignableFrom(cs)) return "enum";
+        return "value";
+    }
+
+    private static IReadOnlyList<string>? EnumValuesOf(Type cs)
+    {
+        var kind = KindOfType(cs);
+        if (kind is not ("enum" or "flags") || !cs.IsGenericType)
+        {
+            return null;
+        }
+        var inner = cs.GetGenericArguments()[0];
+        return inner.IsEnum ? Enum.GetNames(inner) : null;
+    }
+
+    private static string? ElementTypeOf(Type cs)
+    {
+        var kind = KindOfType(cs);
+        if (kind is not ("array" or "handle") || !cs.IsGenericType)
+        {
+            return null;
+        }
+        return RedName(cs.GetGenericArguments()[0]);
+    }
 }
