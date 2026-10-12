@@ -15,7 +15,7 @@ namespace REDbridge;
 /// The JSON-RPC surface. Method names are dotted groups, as in the REDcode design.
 /// Hashes travel as decimal strings, because JavaScript numbers cannot hold 64 bits.
 /// </summary>
-public sealed class BridgeApi
+public sealed partial class BridgeApi
 {
     private readonly BridgeHost _host;
 

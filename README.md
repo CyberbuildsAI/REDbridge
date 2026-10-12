@@ -35,7 +35,7 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | Method group | Examples | Backed by |
 |---|---|---|
 | `archive` | archives, list, search, tree, extract, extractMany, openMod (a mod's .archive anywhere on disk, no game needed) | WolvenKit.RED4 |
-| `cr2w` | toJson, fromJson, fileToJson (later: getChunk, patch, createInstance) | WolvenKit.RED4, WolvenKit.Common |
+| `cr2w` | toJson, fromJson, fileToJson; document sessions: open, getNode, patch, save, close, documents (later: describeType, createInstance, search) | WolvenKit.RED4, WolvenKit.Common |
 | `convert` | texture.toPng, texture.fileToPng, mesh.toGltf, audio.toWav | WolvenKit.Common, WolvenKit.Modkit |
 | `modkit` | import, export, pack, build | WolvenKit.Modkit |
 | `tweakdb` | records, record, flats, query | WolvenKit.RED4 |
