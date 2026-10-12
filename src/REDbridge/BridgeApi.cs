@@ -144,6 +144,41 @@ public sealed class BridgeApi
         return new ExtractManyResult(count, bytes, failed);
     }
 
+    public sealed record ModArchiveInfo(string Path, string Name, int Files, IReadOnlyList<FileInfoDto> Items);
+
+    /// <summary>
+    /// Reads one .archive file anywhere on disk, for example a mod in a mod manager's library, and
+    /// lists the resources inside it. Works without a game loaded: only the hash tables are needed
+    /// to resolve names. Two mods that both contain a resource with the same hash conflict in the game.
+    /// </summary>
+    [JsonRpcMethod("archive.openMod")]
+    public ModArchiveInfo OpenMod(string path)
+    {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException($"Archive not found: {path}", path);
+        }
+        _host.Hashes.Loaded.GetAwaiter().GetResult();
+        var reader = new ArchiveReader();
+        var result = reader.ReadArchive(path, _host.Hashes, out var archive);
+        if (result != WolvenKit.RED4.Archive.IO.EFileReadErrorCodes.NoError)
+        {
+            throw new InvalidDataException($"Could not read {path}: {result}");
+        }
+        try
+        {
+            var items = archive.Files.Values
+                .Select(f => new FileInfoDto(f.Key.ToString(CultureInfo.InvariantCulture), f.Name, f.Size, archive.Name))
+                .OrderBy(f => f.Name, StringComparer.Ordinal)
+                .ToList();
+            return new ModArchiveInfo(path, archive.Name, items.Count, items);
+        }
+        finally
+        {
+            (archive as IDisposable)?.Dispose();
+        }
+    }
+
     // ---- cr2w -----------------------------------------------------------------------------
 
     public sealed record JsonResult(string Path, string Hash, string? File, long Bytes, string? Json);

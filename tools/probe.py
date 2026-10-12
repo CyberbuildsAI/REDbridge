@@ -57,6 +57,13 @@ def main():
     assert info["gameLoaded"], "game not loaded"
     archives = step("archive.archives", lambda: [(a["name"], a["files"]) for a in b.call("archive.archives")][:4])
     page = step("archive.list base/characters", lambda: b.call("archive.list", prefix="base\\characters", limit=3))
+    mods_dir = os.path.join(game, "archive", "pc", "mod")
+    mod_archives = [f for f in (os.listdir(mods_dir) if os.path.isdir(mods_dir) else []) if f.lower().endswith(".archive")]
+    if mod_archives:
+        opened = step("archive.openMod " + mod_archives[0], lambda: b.call("archive.openMod", path=os.path.join(mods_dir, mod_archives[0]))["files"])
+        print("   first:", [i["name"] for i in b.call("archive.openMod", path=os.path.join(mods_dir, mod_archives[0]))["items"][:3]])
+    else:
+        print("   archive.openMod: no mod archives in archive/pc/mod, skipped")
     print("   first:", [i["name"] for i in page["items"]])
     hits = step("archive.search .xbm", lambda: b.call("archive.search", query=".xbm", limit=5))
     step("hash.fnv1a64", lambda: b.call("hash.fnv1a64", value="base\\characters"))
