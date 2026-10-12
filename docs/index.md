@@ -19,4 +19,4 @@ The architecture lives in the REDcode design document, which is not published ye
 | For REDdeck | Done: `archive.openMod` (0.4.0) lists the resources inside any `.archive` on disk without loading a game, so the mod manager can show conflicts between mod archives |
 | C4 to C5 | Not started |
 
-Source code and issues: [github.com/CyberbuildsAI/REDbridge](https://github.com/CyberbuildsAI/REDbridge)
+Source code and issues: [github.com/Edgemodders/REDbridge](https://github.com/Edgemodders/REDbridge)

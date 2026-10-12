@@ -3,9 +3,9 @@
 # Built and deployed by .github/workflows/pages.yml.
 
 title: REDbridge
-url: https://cyberbuildsai.github.io
+url: https://edgemodders.github.io
 baseurl: /REDbridge
-repo: https://github.com/CyberbuildsAI/REDbridge
+repo: https://github.com/Edgemodders/REDbridge
 
 markdown: kramdown
 kramdown:

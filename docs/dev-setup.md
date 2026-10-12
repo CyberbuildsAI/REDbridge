@@ -1,6 +1,6 @@
 # Development setup
 
-Everything needed to work on REDbridge, in order. A fresh machine should be able to follow this top to bottom. The shared tools (Git, Python, winget) are the same as in [REDnode's setup guide](https://cyberbuildsai.github.io/REDnode/dev-setup.html).
+Everything needed to work on REDbridge, in order. A fresh machine should be able to follow this top to bottom. The shared tools (Git, Python, winget) are the same as in [REDnode's setup guide](https://edgemodders.github.io/REDnode/dev-setup.html).
 
 Reference machine: Windows 11 Home (build 26200), 16 GB RAM, no administrator session available.
 
@@ -88,7 +88,7 @@ The ClearScript V8 native library (`ClearScriptV8.win-x64.dll`) is not in this b
 ## 4. Repository and GitHub
 
 ```powershell
-git clone --recurse-submodules https://github.com/CyberbuildsAI/REDbridge.git
+git clone --recurse-submodules https://github.com/Edgemodders/REDbridge.git
 cd REDbridge
 git config user.name  "CyberbuildsAI"
 git config user.email "340969962+CyberbuildsAI@users.noreply.github.com"
@@ -101,7 +101,7 @@ The submodule is added in C1. Until then there is nothing to build in this repo.
 From clone to a working bridge. Verified on both reference machines on 2026-10-11.
 
 ```powershell
-git clone --recurse-submodules https://github.com/CyberbuildsAI/REDbridge.git
+git clone --recurse-submodules https://github.com/Edgemodders/REDbridge.git
 cd REDbridge
 npm run build:full                              # dotnet restore, then dotnet build
 npm run probe -- "<Cyberpunk 2077 folder>"      # runs tools\probe.py against the Release build
@@ -140,7 +140,7 @@ On first run the bridge copies the game's `oo2ext_7_win64.dll` to `%LOCALAPPDATA
 
 ## 6. Docs site and brand images
 
-The site at https://cyberbuildsai.github.io/REDbridge/ is built by `.github/workflows/pages.yml` on every push to `main`. **Settings > Pages > Source** must be **GitHub Actions**.
+The site at https://edgemodders.github.io/REDbridge/ is built by `.github/workflows/pages.yml` on every push to `main`. **Settings > Pages > Source** must be **GitHub Actions**.
 
 ```powershell
 .\tools\brand\render.ps1   # banner, social preview, icon, badges

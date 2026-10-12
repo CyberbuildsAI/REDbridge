@@ -3,18 +3,18 @@
 </p>
 
 <p align="center">
-  <a href="https://cyberbuildsai.github.io/REDbridge/"><img src="docs/assets/brand/badges/docs.svg" alt="docs: read the docs"></a>
+  <a href="https://edgemodders.github.io/REDbridge/"><img src="docs/assets/brand/badges/docs.svg" alt="docs: read the docs"></a>
   <img src="docs/assets/brand/badges/status.svg" alt="status: design phase">
   <img src="docs/assets/brand/badges/wolvenkit.svg" alt="WolvenKit: 9.1">
   <img src="docs/assets/brand/badges/dotnet.svg" alt=".NET: 10">
   <a href="LICENSE"><img src="docs/assets/brand/badges/license.svg" alt="license: GPL-3.0"></a>
 </p>
 
-The engine host for [REDcode](https://github.com/CyberbuildsAI/REDcode), a Cyberpunk 2077 modding IDE built on VS Code.
+The engine host for [REDcode](https://github.com/Edgemodders/REDcode), a Cyberpunk 2077 modding IDE built on VS Code.
 
 REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C# libraries in a local process and exposes them over JSON-RPC: archive browsing, CR2W files as JSON and back, texture, mesh and audio conversion, TweakDB queries, import, export and packing. REDcode's extensions are its first client. An MCP server over the same methods lets AI assistants work a mod project through it too.
 
-**[Read the docs](https://cyberbuildsai.github.io/REDbridge/)** &middot; [REDcode](https://github.com/CyberbuildsAI/REDcode) &middot; [REDnode](https://github.com/CyberbuildsAI/REDnode)
+**[Read the docs](https://edgemodders.github.io/REDbridge/)** &middot; [REDcode](https://github.com/Edgemodders/REDcode) &middot; [REDnode](https://github.com/Edgemodders/REDnode)
 
 > [!NOTE]
 > **Status: C1 bridge MVP works.** The bridge indexes a game install, lists and searches archives, converts CR2W files to JSON and back byte for byte, decodes textures to PNG and resolves hashes, all over JSON-RPC on stdio. `tools/probe.py` exercises it against a real install in about seven seconds. Next: the REDcode extension that talks to it.
@@ -56,13 +56,13 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 ## Build
 
 ```powershell
-git clone --recurse-submodules https://github.com/CyberbuildsAI/REDbridge.git
+git clone --recurse-submodules https://github.com/Edgemodders/REDbridge.git
 cd REDbridge
 npm run build:full                              # restore, then build
 npm run probe -- "<Cyberpunk 2077 folder>"      # exercise every method against a game install
 ```
 
-Later, `npm run update` pulls, updates the submodule and rebuilds, and `npm run build` rebuilds after local changes. The scripts only wrap `dotnet` and `git`; `package.json` shows the exact commands. Needs the .NET 10 SDK, Node and Python 3. Details, including the per-user SDK route without administrator rights, are in the [setup guide](https://cyberbuildsai.github.io/REDbridge/dev-setup.html).
+Later, `npm run update` pulls, updates the submodule and rebuilds, and `npm run build` rebuilds after local changes. The scripts only wrap `dotnet` and `git`; `package.json` shows the exact commands. Needs the .NET 10 SDK, Node and Python 3. Details, including the per-user SDK route without administrator rights, are in the [setup guide](https://edgemodders.github.io/REDbridge/dev-setup.html).
 
 ## Roadmap
 
