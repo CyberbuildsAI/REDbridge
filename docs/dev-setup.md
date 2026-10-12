@@ -34,11 +34,12 @@ $dl = "$env:TEMP\dotnet-install"; New-Item -ItemType Directory -Force $dl | Out-
 Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile "$dl\dotnet-install.ps1"
 $root = "$env:LOCALAPPDATA\Microsoft\dotnet"
 & "$dl\dotnet-install.ps1" -Channel 10.0 -InstallDir $root -NoPath
-# make it the default for this user; new shells only
+# make it the default dotnet for this user; new shells only
 [Environment]::SetEnvironmentVariable('Path', "$root;" + [Environment]::GetEnvironmentVariable('Path','User'), 'User')
-[Environment]::SetEnvironmentVariable('DOTNET_ROOT', $root, 'User')
 & "$root\dotnet.exe" --list-sdks
 ```
+
+Do **not** set `DOTNET_ROOT` as a user or machine environment variable. Every .NET program on the machine then looks only in that folder, and the per-user folder has only .NET 10: Vortex's .NET 9 check failed that way on the owner's laptop. Set it per process instead (next sections).
 
 A machine-wide `dotnet.exe` in `C:\Program Files\dotnet` may exist as a runtime only. It does not see the per-user SDK, so the per-user folder must come first on `PATH`. With administrator rights, `winget install --id Microsoft.DotNet.SDK.10 -e` is the simpler route.
 
@@ -128,11 +129,13 @@ Notes:
 
 ### .NET runtime location
 
-With a machine-wide SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`) nothing more is needed. With the per-user SDK from section 2, `REDbridge.exe` needs `DOTNET_ROOT` in the environment of whatever starts it, or it fails to find a runtime:
+With a machine-wide SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`) nothing more is needed. With the per-user SDK from section 2, `REDbridge.exe` needs `DOTNET_ROOT` in the environment of whatever starts it, or it fails to find a runtime. Set it for that process only, never for the user (see section 2):
 
 ```powershell
-$env:DOTNET_ROOT = "$env:LOCALAPPDATA\Microsoft\dotnet"
+$env:DOTNET_ROOT = "$env:LOCALAPPDATA\Microsoft\dotnet"   # this shell only
 ```
+
+REDcode (`redcode.dotnetRoot`) and REDdeck (`reddeck.dotnetRoot`, which defaults to the per-user folder when it has .NET 10) pass it to the bridge process themselves.
 
 ### Oodle
 
