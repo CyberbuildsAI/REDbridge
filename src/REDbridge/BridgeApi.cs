@@ -269,6 +269,43 @@ public sealed partial class BridgeApi
         return new ExtractResult(Path.GetFullPath(outFile), new FileInfo(outFile).Length);
     }
 
+    // ---- project --------------------------------------------------------------------------
+
+    public sealed record PackResult(string Archive, long Bytes, int Files, List<string> Warnings);
+
+    /// <summary>
+    /// Packs a folder (a project's source/archive) into outDir/modName.archive through WolvenKit's
+    /// packer, the same archive WolvenKit's Pack writes. Warnings list the paths with capital letters
+    /// or spaces, which WolvenKit warns about because the game may not resolve them.
+    /// </summary>
+    [JsonRpcMethod("project.pack")]
+    public PackResult Pack(string dir, string outDir, string modName)
+    {
+        var input = new DirectoryInfo(dir);
+        if (!input.Exists)
+        {
+            throw new DirectoryNotFoundException($"Folder not found: {dir}");
+        }
+        if (string.IsNullOrWhiteSpace(modName))
+        {
+            throw new ArgumentException("modName is required", nameof(modName));
+        }
+        Directory.CreateDirectory(outDir);
+        var files = input.EnumerateFiles("*", SearchOption.AllDirectories).ToList();
+        var warnings = files
+            .Select(f => Path.GetRelativePath(input.FullName, f.FullName))
+            .Where(r => r.Any(char.IsUpper) || r.Any(char.IsWhiteSpace))
+            .OrderBy(r => r, StringComparer.Ordinal)
+            .ToList();
+        _host.Hashes.Loaded.GetAwaiter().GetResult();
+        if (!_host.ModTools.Pack(input, new DirectoryInfo(outDir), modName))
+        {
+            throw new InvalidOperationException($"WolvenKit could not pack {dir}; see the bridge log");
+        }
+        var archive = Path.Combine(Path.GetFullPath(outDir), $"{modName}.archive");
+        return new PackResult(archive, new FileInfo(archive).Length, files.Count, warnings);
+    }
+
     // ---- hash -----------------------------------------------------------------------------
 
     public sealed record HashResult(string Value, string Hash, string Hex);
