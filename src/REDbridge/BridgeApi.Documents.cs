@@ -34,7 +34,8 @@ public sealed partial class BridgeApi
     private int _nextDocument;
 
     public sealed record DocumentInfo(string Doc, string Type, string? File, string? GamePath, bool ReadOnly, long Bytes, int EmbeddedFiles);
-    public sealed record NodeChild(string Name, string Kind, string Type, string Preview, int? Count);
+    /// <summary>One child of a node. Value is filled for leaves and for small structs (a table row, a vector), so a page of rows needs one call.</summary>
+    public sealed record NodeChild(string Name, string Kind, string Type, string Preview, int? Count, JsonElement? Value);
     public sealed record NodeDto(string Path, string Kind, string Type, JsonElement? Value, IReadOnlyList<NodeChild>? Children, int? Total, int? Offset);
     public sealed record PatchOp(string Op, string Path, JsonElement? Value = null, string? From = null);
     public sealed record PatchResult(int Applied, IReadOnlyList<PatchOp> Inverse);
@@ -251,7 +252,22 @@ public sealed partial class BridgeApi
         var kind = KindOf(value);
         var type = TypeNameOf(value);
         int? count = value is IList l ? l.Count : null;
-        return new NodeChild(name, kind, type, Preview(value, kind, type), count);
+        JsonElement? inline = kind == "value" ? ToElement(value!) : value is RedBaseClass cls && IsSmallStruct(cls) ? ToElement(cls) : null;
+        return new NodeChild(name, kind, type, Preview(value, kind, type), count, inline);
+    }
+
+    /// <summary>A class with a few leaf properties and nothing nested: a vector, a rectangle, a localization row.</summary>
+    private static bool IsSmallStruct(RedBaseClass cls)
+    {
+        var n = 0;
+        foreach (var (_, value) in PropertiesOf(cls))
+        {
+            if (++n > SmallStructProperties || KindOf(value) is not ("value" or "null"))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static string Preview(object? value, string kind, string type)
@@ -467,6 +483,113 @@ public sealed partial class BridgeApi
                 throw new ArgumentException($"'{path}': cannot set '{last}' under a {KindOf(parent)}");
         }
     }
+
+    // ---- batch reads and search ----------------------------------------------------------
+
+    /// <summary>Several nodes in one call, for a grid or a filtered table. A path that fails gives an error entry instead of failing the call.</summary>
+    [JsonRpcMethod("cr2w.getNodes")]
+    public IReadOnlyList<NodeDto> GetNodes(string doc, IReadOnlyList<string> paths, int limit = DefaultPageSize)
+    {
+        var open = Require(doc);
+        var result = new List<NodeDto>(paths.Count);
+        foreach (var path in paths)
+        {
+            try
+            {
+                result.Add(ToDto(Resolve(open.File, path), path, 0, Math.Clamp(limit, 1, 5000)));
+            }
+            catch (Exception e)
+            {
+                result.Add(new NodeDto(path, "error", e.Message, null, null, null, null));
+            }
+        }
+        return result;
+    }
+
+    public sealed record SearchHit(string Path, string Type, string Preview);
+    public sealed record SearchResult(int Total, bool Truncated, IReadOnlyList<SearchHit> Hits);
+
+    /// <summary>
+    /// Finds leaves whose text contains the query (case-insensitive), or whose property name does,
+    /// below a start path. Strings, names, resource paths, enums and numbers are searched as text.
+    /// Total counts every match; Hits holds the first <paramref name="limit"/>.
+    /// </summary>
+    [JsonRpcMethod("cr2w.search")]
+    public SearchResult Search(string doc, string query, string path = "", int limit = DefaultPageSize)
+    {
+        var open = Require(doc);
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return new SearchResult(0, false, Array.Empty<SearchHit>());
+        }
+        var start = Resolve(open.File, path);
+        var hits = new List<SearchHit>();
+        var total = 0;
+        // The same object can be reachable by two paths (a component and its copy in the compiled
+        // package share instances after parsing), and both paths are wanted. Only cycles are cut.
+        var stack = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        void Visit(object? node, string nodePath, string name, int depth)
+        {
+            if (depth > 64)
+            {
+                return;
+            }
+            switch (node)
+            {
+                case null:
+                    return;
+                case RedBaseClass cls:
+                    if (!stack.Add(cls)) return;
+                    foreach (var (propName, value) in PropertiesOf(cls))
+                    {
+                        Visit(value, Join(nodePath, propName), propName, depth + 1);
+                    }
+                    stack.Remove(cls);
+                    return;
+                case IRedBaseHandle handle:
+                    Visit(handle.GetValue(), Join(nodePath, "Data"), name, depth + 1);
+                    return;
+                case IRedBufferWrapper buffer:
+                    Visit(buffer.Buffer.Data, Join(nodePath, "Data"), name, depth + 1);
+                    return;
+                case RedPackage package:
+                    Visit(package.Chunks, Join(nodePath, "Chunks"), name, depth + 1);
+                    return;
+                case IList list:
+                    for (var i = 0; i < list.Count; i++)
+                    {
+                        Visit(list[i], Join(nodePath, i.ToString(CultureInfo.InvariantCulture)), name, depth + 1);
+                    }
+                    return;
+                default:
+                {
+                    var text = LeafText(node);
+                    if (text.Contains(query, StringComparison.OrdinalIgnoreCase) || name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    {
+                        total++;
+                        if (hits.Count < limit)
+                        {
+                            hits.Add(new SearchHit(nodePath, TypeNameOf(node), text.Length > 80 ? text[..77] + "..." : text));
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+        Visit(start, path, path.Contains('.') ? path[(path.LastIndexOf('.') + 1)..] : path, 0);
+        return new SearchResult(total, total > hits.Count, hits);
+    }
+
+    private static string Join(string parent, string child) => parent.Length == 0 ? child : $"{parent}.{child}";
+
+    /// <summary>A leaf as the text a person would search for: resolved names and paths, enum names, numbers.</summary>
+    private static string LeafText(object leaf) => leaf switch
+    {
+        CName n => n.GetResolvedText() ?? n.ToString() ?? "",
+        ResourcePath p => p.GetResolvedText() ?? p.ToString() ?? "",
+        IRedEnum e => e.ToEnumString(),
+        _ => leaf.ToString() ?? "",
+    };
 
     // ---- types ---------------------------------------------------------------------------
 
