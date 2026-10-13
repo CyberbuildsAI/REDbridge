@@ -4,6 +4,7 @@ REDbridge is the .NET process that hosts WolvenKit's headless libraries and expo
 
 ## Current status and next step
 
+- **Requests from other repos:** open issues labelled `request` at https://github.com/Edgemodders/REDbridge/issues?q=is%3Aissue+is%3Aopen+label%3Arequest are needs from EDGEbuilder and REDdeck, each with the shape that would work. Read them at the start of a session and pick them up when the current phase is done; close each with a note on what shipped.
 - **Design:** settled in the REDcode design document, which the owner holds privately. Ask for it before architectural work. Sections 05 (architecture) and the bridge protocol table are the spec for this repo.
 - **C0 done (2026-10-11):** the .NET 10 SDK is installed per-user and WolvenKit's `Core`, `Common`, `RED4` and `Modkit` build at the pinned commit. What the output contains, and the low-memory build flags, are in `docs/dev-setup.md`. Decision: WolvenKit is wired as a git submodule with project references, never as committed binaries.
 - **C1 and C2 done (2026-10-11):** the bridge speaks JSON-RPC over stdio with the archive, cr2w, texture and hash groups; `npm run build` and `npm run probe` are the loop. 0.3.0 added `texture.fileToPng` for REDcode's texture viewer. 0.4.0 added `archive.openMod` for REDdeck, the mod manager (https://github.com/Edgemodders/REDdeck), which starts the bridge without `--game`; the method needs only the hash tables.
