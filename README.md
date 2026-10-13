@@ -37,6 +37,8 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | `archive` | archives, list, search, tree, extract, extractMany, openMod (a mod's .archive anywhere on disk, no game needed) | WolvenKit.RED4 |
 | `cr2w` | toJson, fromJson, fileToJson; document sessions: open, getNode, getNodes, search, patch, save, close, documents, describeType, createInstance | WolvenKit.RED4, WolvenKit.Common |
 | `convert` | texture.toPng, texture.fileToPng, mesh.toGltf, audio.toWav | WolvenKit.Common, WolvenKit.Modkit |
+| `mesh` | info, infoMany: a mesh's or an entity template's bounds and appearance names, for an asset index | WolvenKit.RED4 |
+| `sector` | build: an EDGEbuilder scene into a streaming sector, a streaming block and an ArchiveXL file in a REDcode project | WolvenKit.RED4 |
 | `modkit` | import, export, pack, build | WolvenKit.Modkit |
 | `tweakdb` | records, record, flats, query | WolvenKit.RED4 |
 | `hash` | fnv1a64, resolve | WolvenKit.Core |
