@@ -8,6 +8,7 @@ using WolvenKit.RED4.Archive.CR2W;
 using WolvenKit.RED4.Archive.IO;
 using WolvenKit.RED4.CR2W;
 using WolvenKit.RED4.CR2W.JSON;
+using WolvenKit.RED4.Types;
 
 namespace REDbridge;
 
@@ -238,11 +239,7 @@ public sealed partial class BridgeApi
     public ExtractResult ToPng(string path, string outFile)
     {
         var file = Find(path);
-        var cr2w = ReadCr2w(file);
-        using var image = RedImage.FromRedFile(cr2w);
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outFile))!);
-        image.SaveToPNG(outFile);
-        return new ExtractResult(Path.GetFullPath(outFile), new FileInfo(outFile).Length);
+        return SavePng(ReadCr2w(file), outFile);
     }
 
     /// <summary>Converts a texture file on disk (for example one in a project's source/archive) to PNG.</summary>
@@ -251,7 +248,22 @@ public sealed partial class BridgeApi
     {
         using var fs = File.OpenRead(file);
         var cr2w = _host.Parser.ReadRed4File(fs) ?? throw new InvalidDataException($"'{file}' is not a CR2W file");
+        return SavePng(cr2w, outFile);
+    }
+
+    /// <summary>
+    /// Writes the texture as a PNG the right way up. Game textures are stored bottom-up, and
+    /// WolvenKit's export and viewers flip them vertically (except LUTs); so does the game when
+    /// it samples them, which is why atlas UV rectangles only line up on the flipped image.
+    /// </summary>
+    private static ExtractResult SavePng(CR2WFile cr2w, string outFile)
+    {
         using var image = RedImage.FromRedFile(cr2w);
+        var isLut = cr2w.RootChunk is CBitmapTexture { Setup: { } setup } && setup.Group == Enums.GpuWrapApieTextureGroup.TEXG_Generic_LUT;
+        if (!isLut)
+        {
+            image.FlipV();
+        }
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outFile))!);
         image.SaveToPNG(outFile);
         return new ExtractResult(Path.GetFullPath(outFile), new FileInfo(outFile).Length);
