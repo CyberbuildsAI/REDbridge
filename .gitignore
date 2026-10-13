@@ -25,3 +25,6 @@ probe-out/
 
 # npm wrapper has no dependencies, but keep the folder out anyway
 node_modules/
+
+# python
+__pycache__/
