@@ -39,8 +39,8 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | `convert` | texture.toPng, texture.fileToPng, mesh.toGltf, audio.toWav | WolvenKit.Common, WolvenKit.Modkit |
 | `mesh` | info, infoMany: a mesh's or an entity template's bounds and appearance names, for an asset index | WolvenKit.RED4 |
 | `sector` | build: an EDGEbuilder scene into a streaming sector, a streaming block and an ArchiveXL file in a REDcode project | WolvenKit.RED4 |
-| `project` | pack (a folder into `<modName>.archive` through WolvenKit's packer, with warnings for paths with capital letters or spaces) | WolvenKit.Modkit |
-| `modkit` | import, export, build | WolvenKit.Modkit |
+| `project` | pack (a folder into `<modName>.archive` through WolvenKit's packer, with warnings for paths with capital letters or spaces); export (a file under `source/archive` to the same path under `source/raw`: glTF, an image, WAV and so on) and import (back again, an existing texture keeping all its settings), each listing the files written | WolvenKit.Modkit |
+| `modkit` | build | WolvenKit.Modkit |
 | `tweakdb` | records, record, flats, query | WolvenKit.RED4 |
 | `hash` | fnv1a64, resolve | WolvenKit.Core |
 | `script` | run a `wkit`-compatible script | ClearScript V8 |
