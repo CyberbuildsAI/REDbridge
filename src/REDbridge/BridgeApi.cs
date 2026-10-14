@@ -180,6 +180,61 @@ public sealed partial class BridgeApi
         }
     }
 
+    /// <summary>
+    /// Extracts resources from one .archive file anywhere on disk, such as a mod in REDdeck's library,
+    /// as archive.extractMany does for the game's archives. Each item names a resource by path or
+    /// hash. No game needed. Resources that fail or are not in the archive are listed, the rest succeed.
+    /// </summary>
+    [JsonRpcMethod("archive.extractFromMod")]
+    public ExtractManyResult ExtractFromMod(string archivePath, IReadOnlyList<ExtractItem> items)
+    {
+        if (!File.Exists(archivePath))
+        {
+            throw new FileNotFoundException($"Archive not found: {archivePath}", archivePath);
+        }
+        _host.Hashes.Loaded.GetAwaiter().GetResult();
+        var reader = new ArchiveReader();
+        var result = reader.ReadArchive(archivePath, _host.Hashes, out var archive);
+        if (result != WolvenKit.RED4.Archive.IO.EFileReadErrorCodes.NoError)
+        {
+            throw new InvalidDataException($"Could not read {archivePath}: {result}");
+        }
+        try
+        {
+            var failed = new List<string>();
+            long bytes = 0;
+            var count = 0;
+            foreach (var item in items)
+            {
+                var key = TryParseHash(item.Path, out var h) ? h : FNV1A64HashAlgorithm.HashString(item.Path.Replace('/', '\\'));
+                if (!archive.Files.TryGetValue(key, out var file))
+                {
+                    _host.Log.Warning($"extractFromMod {item.Path}: not in {Path.GetFileName(archivePath)}");
+                    failed.Add(item.Path);
+                    continue;
+                }
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(item.OutFile))!);
+                    using var fs = File.Create(item.OutFile);
+                    file.Extract(fs);
+                    bytes += fs.Length;
+                    count++;
+                }
+                catch (Exception e)
+                {
+                    _host.Log.Warning($"extractFromMod {item.Path}: {e.Message}");
+                    failed.Add(item.Path);
+                }
+            }
+            return new ExtractManyResult(count, bytes, failed);
+        }
+        finally
+        {
+            (archive as IDisposable)?.Dispose();
+        }
+    }
+
     // ---- cr2w -----------------------------------------------------------------------------
 
     public sealed record JsonResult(string Path, string Hash, string? File, long Bytes, string? Json);
