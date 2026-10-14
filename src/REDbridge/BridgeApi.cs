@@ -252,6 +252,24 @@ public sealed partial class BridgeApi
     }
 
     /// <summary>
+    /// Converts a plain image (TGA, DDS, TIFF, BMP, JPG, PNG), such as an exported texture in a
+    /// project's source/raw, to PNG for viewing. No flip: these files are already the right way up,
+    /// since the export flipped them.
+    /// </summary>
+    [JsonRpcMethod("texture.imageToPng")]
+    public ExtractResult ImageToPng(string file, string outFile)
+    {
+        if (!File.Exists(file))
+        {
+            throw new FileNotFoundException($"File not found: {file}", file);
+        }
+        using var image = RedImage.LoadFromFile(file) ?? throw new InvalidDataException($"WolvenKit cannot read {Path.GetFileName(file)} as an image");
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outFile))!);
+        image.SaveToPNG(outFile);
+        return new ExtractResult(Path.GetFullPath(outFile), new FileInfo(outFile).Length);
+    }
+
+    /// <summary>
     /// Writes the texture as a PNG the right way up. Game textures are stored bottom-up, and
     /// WolvenKit's export and viewers flip them vertically (except LUTs); so does the game when
     /// it samples them, which is why atlas UV rectangles only line up on the flipped image.
