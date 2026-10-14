@@ -67,6 +67,8 @@ def main():
     print("   first:", [i["name"] for i in page["items"]])
     hits = step("archive.search .xbm", lambda: b.call("archive.search", query=".xbm", limit=5))
     step("hash.fnv1a64", lambda: b.call("hash.fnv1a64", value="base\\characters"))
+    step("sound.events", lambda: (lambda r: (r["count"], r["events"][0]))(b.call("sound.events")))
+    print("   ui_menu_value_up hashes to 2913248083:", any(e["name"] == "ui_menu_value_up" and e["hash"] == 2913248083 for e in b.call("sound.events")["events"]))
 
     ent = b.call("archive.list", prefix="base\\characters", limit=50)["items"]
     ent = next((i for i in ent if i["name"].endswith(".ent")), None) or next(iter(ent))

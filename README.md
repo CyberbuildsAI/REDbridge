@@ -12,7 +12,7 @@
 
 The engine host for [REDcode](https://github.com/Edgemodders/REDcode), a Cyberpunk 2077 modding IDE built on VS Code.
 
-REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C# libraries in a local process and exposes them over JSON-RPC: archive browsing, CR2W files as JSON and back, texture, mesh and audio conversion, TweakDB queries, import, export and packing. REDcode's extensions are its first client. An MCP server over the same methods lets AI assistants work a mod project through it too.
+REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C# libraries in a local process and exposes them over JSON-RPC: archive browsing, CR2W files as JSON and back, texture, mesh and audio conversion, TweakDB queries, import, export and packing. REDcode's extensions are its first client. AI assistants reach the same methods through REDcode's MCP server, `redcode-mcp`, which starts the bridge and talks to it over stdio as the extension does.
 
 **[Read the docs](https://edgemodders.github.io/REDbridge/)** &middot; [REDcode](https://github.com/Edgemodders/REDcode) &middot; [REDnode](https://github.com/Edgemodders/REDnode)
 
@@ -27,7 +27,7 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
  │ archive browser           │     │ JSON-RPC 2.0 over stdio    │     │ RED4: CR2W, archives│
  │ CR2W editor               │◄───►│ method groups: archive,    │◄───►│ Common: JSON, DDS   │
  │ import / export / pack    │     │ cr2w, convert, modkit,     │     │ Modkit: glTF, pack  │
- │ AI assistants via MCP     │     │ tweakdb, hash, script, mcp │     │ Core: Oodle, hashes │
+ │ AI assistants via MCP     │     │ tweakdb, sound, hash       │     │ Core: Oodle, hashes │
  └───────────────────────────┘     └────────────────────────────┘     └────────────────────┘
                                     big outputs (PNG, glTF, WAV) go to a cache folder; RPC returns paths
 ```
@@ -42,9 +42,9 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | `project` | pack (a folder into `<modName>.archive` through WolvenKit's packer, with warnings for paths with capital letters or spaces); export (a file under `source/archive` to the same path under `source/raw`: glTF, an image, WAV and so on) and import (back again, an existing texture keeping all its settings), each listing the files written | WolvenKit.Modkit |
 | `modkit` | build | WolvenKit.Modkit |
 | `tweakdb` | records, record, flats, query | WolvenKit.RED4 |
+| `sound` | events: the sound event names WolvenKit knows, with their Wwise hashes, which name the event groups in `sfx_container.opusinfo` | WolvenKit.Modkit's `soundEvents.json` |
 | `hash` | fnv1a64, resolve | WolvenKit.Core |
-| `script` | run a `wkit`-compatible script | ClearScript V8 |
-| `mcp` | the same methods for AI assistants | REDbridge |
+| `script` | not planned: REDcode dropped its script runner | |
 
 ## Repository layout
 
@@ -72,7 +72,7 @@ Later, `npm run update` pulls, updates the submodule and rebuilds, and `npm run 
 - **C0 Decide.** Build WolvenKit's headless libraries locally and confirm what the bridge references. Agree the approach with the WolvenKit team.
 - **C1 Bridge MVP.** `archive.list`, `cr2w.toJson`, `cr2w.fromJson`, `texture.toPng`, `hash.*` over stdio. Proves the data path with REDcode.
 - **C2 to C4.** Method groups for browsing, editing, import, export and packing, as REDcode's extensions need them.
-- **C5.** Script host and MCP server.
+- **C5.** Methods for REDcode's viewers: audio (`sound.events`, 0.7.2), then TweakDB. No script host: REDcode dropped its script runner (agents and MCP tools cover it). The MCP server lives in REDcode as [`redcode-mcp`](https://github.com/Edgemodders/REDcode/tree/main/packages/redcode-mcp), MIT, over stdio.
 
 Phases follow the REDcode roadmap.
 

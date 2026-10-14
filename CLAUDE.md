@@ -1,6 +1,6 @@
 # REDbridge: notes for Claude sessions
 
-REDbridge is the .NET process that hosts WolvenKit's headless libraries and exposes them over JSON-RPC for REDcode (https://github.com/Edgemodders/REDcode) and for AI assistants through an MCP server. It is one of three repos by the same owner: REDnode (runtime scripting), REDcode (the IDE) and REDbridge (the engine host). REDnode's `CLAUDE.md` and `docs/dev-setup.md` set the shared conventions.
+REDbridge is the .NET process that hosts WolvenKit's headless libraries and exposes them over JSON-RPC for REDcode (https://github.com/Edgemodders/REDcode) and, through REDcode's MCP server `redcode-mcp` (stdio, MIT, in the REDcode repo), for AI assistants. REDbridge itself has no MCP code. It is one of three repos by the same owner: REDnode (runtime scripting), REDcode (the IDE) and REDbridge (the engine host). REDnode's `CLAUDE.md` and `docs/dev-setup.md` set the shared conventions.
 
 ## Current status and next step
 
