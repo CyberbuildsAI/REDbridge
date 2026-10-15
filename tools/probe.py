@@ -69,6 +69,10 @@ def main():
     step("hash.fnv1a64", lambda: b.call("hash.fnv1a64", value="base\\characters"))
     step("sound.events", lambda: (lambda r: (r["count"], r["events"][0]))(b.call("sound.events")))
     print("   ui_menu_value_up hashes to 2913248083:", any(e["name"] == "ui_menu_value_up" and e["hash"] == 2913248083 for e in b.call("sound.events")["events"]))
+    step("tweakdb.names (offset bits ignored)", lambda: b.call("tweakdb.names", ids=["0xABCDEF0BF5E188EC"]))
+    step("tweakdb.types (loads TweakDB)", lambda: (lambda r: (r["file"], r["records"], r["types"][0]))(b.call("tweakdb.types")))
+    step("tweakdb.flat Items.money.quality", lambda: b.call("tweakdb.flat", path="Items.money.quality")["value"])
+    step("tweakdb.records Clothing", lambda: (lambda r: (r["total"], r["items"][0]))(b.call("tweakdb.records", type="Clothing", flats=["entityName", "displayName", "equipArea"], limit=1, resolveLocKeys=True)))
 
     ent = b.call("archive.list", prefix="base\\characters", limit=50)["items"]
     ent = next((i for i in ent if i["name"].endswith(".ent")), None) or next(iter(ent))
