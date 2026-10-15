@@ -18,12 +18,24 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
   </ItemGroup>
 
-  <!-- WolvenKit's headless libraries, built from the pinned submodule. GPL-3.0. -->
+  <!-- WolvenKit's headless libraries, from WolvenKit's own NuGet packages (GPL-3.0; source at
+       https://github.com/WolvenKit/WolvenKit, the tag of the same version). Dependabot proposes each
+       new release by raising WolvenKitVersion, which all four and the DirectXTexNet path below share. -->
+  <PropertyGroup>
+    <WolvenKitVersion>9.1.0</WolvenKitVersion>
+  </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.Core\WolvenKit.Core.csproj" />
-    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.RED4\WolvenKit.RED4.csproj" />
-    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.Common\WolvenKit.Common.csproj" />
-    <ProjectReference Include="..\..\external\WolvenKit\WolvenKit.Modkit\WolvenKit.Modkit.csproj" />
+    <PackageReference Include="WolvenKit.Core" Version="$(WolvenKitVersion)" />
+    <PackageReference Include="WolvenKit.RED4" Version="$(WolvenKitVersion)" />
+    <PackageReference Include="WolvenKit.Common" Version="$(WolvenKitVersion)" />
+    <PackageReference Include="WolvenKit.Modkit" Version="$(WolvenKitVersion)" />
+    <!-- Modkit's NAudio.Lame copies libmp3lame.*.dll in its build step, which only runs for a direct reference. -->
+    <PackageReference Include="NAudio.Lame" Version="2.1.0" />
+    <!-- WolvenKit.Common ships DirectXTexNet.dll as a content file, not a library, so .NET does not list it
+         in the app's deps.json and texture conversion fails to load it. A direct reference lists it. -->
+    <Reference Include="DirectXTexNet">
+      <HintPath>$(NuGetPackageRoot)wolvenkit.common\$(WolvenKitVersion)\contentFiles\any\any\DirectXTexNet.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

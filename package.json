@@ -7,7 +7,8 @@
     "restore": "node tools/dotnet.mjs restore src/REDbridge/REDbridge.csproj",
     "build": "node tools/dotnet.mjs build src/REDbridge/REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q",
     "build:full": "npm run restore && npm run build",
-    "update": "git pull --recurse-submodules && git submodule update --init && npm run build:full",
+    "update": "git pull && npm run build:full",
+    "wolvenkit:source": "node tools/wolvenkit-source.mjs",
     "probe": "python -I tools/probe.py src/REDbridge/bin/Release/net10.0/REDbridge.exe",
     "clean": "node tools/dotnet.mjs clean src/REDbridge/REDbridge.csproj -c Release -v q"
   },

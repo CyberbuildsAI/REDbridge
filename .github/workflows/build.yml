@@ -1,0 +1,32 @@
+# Builds the bridge on every push to main and every pull request, such as Dependabot's WolvenKit
+# updates. It only proves the build: the probe and REDcode's smoke test need the game, so a session
+# runs them on a machine with Cyberpunk 2077 before a WolvenKit update is merged.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - run: dotnet restore src/REDbridge/REDbridge.csproj
+
+      - run: dotnet build src/REDbridge/REDbridge.csproj -c Release --no-restore -v q
+
+      - name: The output has what the bridge needs at run time
+        shell: bash
+        run: |
+          out=src/REDbridge/bin/Release/net10.0
+          for f in REDbridge.exe DirectXTexNet.dll lib/texconv.dll kraken.dll wwtools.dll opus-tools/opusdec.exe Resources/soundEvents.json; do
+            test -f "$out/$f" || { echo "::error::$f is missing from the build output"; exit 1; }
+          done
+          grep -q DirectXTexNet "$out/REDbridge.deps.json" || { echo "::error::DirectXTexNet is not in REDbridge.deps.json, so texture conversion would fail to load it"; exit 1; }

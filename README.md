@@ -54,18 +54,18 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | `tools/brand/` | Generates the banner, badges and icon |
 | `src/REDbridge/` | The bridge: host, RPC surface, stderr logger |
 | `tools/probe.py` | Stdlib Python client that runs every method over the real protocol |
-| `external/WolvenKit/` | WolvenKit as a git submodule, pinned to 9.1.0 |
+| `tools/wolvenkit-source.mjs` | Fetches WolvenKit's source at the version the bridge uses into `external/WolvenKit`, for reading (`npm run wolvenkit:source`) |
 
 ## Build
 
 ```powershell
-git clone --recurse-submodules https://github.com/Edgemodders/REDbridge.git
+git clone https://github.com/Edgemodders/REDbridge.git
 cd REDbridge
 npm run build:full                              # restore, then build
 npm run probe -- "<Cyberpunk 2077 folder>"      # exercise every method against a game install
 ```
 
-Later, `npm run update` pulls, updates the submodule and rebuilds, and `npm run build` rebuilds after local changes. The scripts only wrap `dotnet` and `git`; `package.json` shows the exact commands. Needs the .NET 10 SDK, Node and Python 3. Details, including the per-user SDK route without administrator rights, are in the [setup guide](https://edgemodders.github.io/REDbridge/dev-setup.html).
+WolvenKit comes from its own NuGet packages (`WolvenKit.Core`, `.RED4`, `.Common`, `.Modkit`), at the version in `WolvenKitVersion` in `src/REDbridge/REDbridge.csproj`. Dependabot opens a pull request for each new WolvenKit release, the Build workflow checks that it compiles, and the probe is run against the game before it is merged. Later, `npm run update` pulls and rebuilds, and `npm run build` rebuilds after local changes. The scripts only wrap `dotnet` and `git`; `package.json` shows the exact commands. Needs the .NET 10 SDK, Node and Python 3. Details, including the per-user SDK route without administrator rights, are in the [setup guide](https://edgemodders.github.io/REDbridge/dev-setup.html).
 
 ## Roadmap
 

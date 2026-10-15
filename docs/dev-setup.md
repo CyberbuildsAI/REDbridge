@@ -43,36 +43,24 @@ Do **not** set `DOTNET_ROOT` as a user or machine environment variable. Every .N
 
 A machine-wide `dotnet.exe` in `C:\Program Files\dotnet` may exist as a runtime only. It does not see the per-user SDK, so the per-user folder must come first on `PATH`. With administrator rights, `winget install --id Microsoft.DotNet.SDK.10 -e` is the simpler route.
 
-## 3. WolvenKit source
+## 3. WolvenKit
 
-REDbridge builds against WolvenKit's headless libraries at a pinned commit, wired as a git submodule with project references. WolvenKit's binaries are never committed or redistributed by this repo; a build produces them.
+REDbridge uses WolvenKit's headless libraries from WolvenKit's own NuGet packages: `WolvenKit.Core`, `WolvenKit.RED4`, `WolvenKit.Common` and `WolvenKit.Modkit`, all at `WolvenKitVersion` in `src/REDbridge/REDbridge.csproj` (9.1.0 since 2026-10-15). They are GPL-3.0, and their source is WolvenKit's repository at the tag of that version. This repo never commits WolvenKit's binaries; `dotnet restore` fetches them.
 
-| Pinned commit | WolvenKit version |
+Until 2026-10-15 the libraries were built from a git submodule at `external/WolvenKit`. The package build was checked against that build before the switch: the same files in the output (debug symbols aside), and the probe, REDcode's smoke test, a `.wem` to Ogg export and a mesh to glTF export all pass. Two things the packages need in the project file:
+
+| What | Why |
 |---|---|
-| `4d1716b1` | 9.1.0 (2026-10-10) |
+| A `Reference` to `DirectXTexNet.dll` inside the WolvenKit.Common package | The package ships it as a content file, not a library, so .NET leaves it out of `REDbridge.deps.json` and `texture.toPng` fails with "Could not load file or assembly DirectXTexNet". The Build workflow checks it is listed |
+| A direct `PackageReference` to `NAudio.Lame` | Its build step copies `libmp3lame.*.dll` and runs only for a direct reference. The bridge does not encode MP3; it keeps the output the same as before |
 
-Headless projects: `WolvenKit.Core`, `WolvenKit.Common`, `WolvenKit.RED4`, `WolvenKit.Modkit`. The WPF projects (`WolvenKit`, `WolvenKit.App`) are not needed and not built.
+**Updating WolvenKit.** Dependabot (`.github/dependabot.yml`) opens a pull request each week a new WolvenKit release is out, raising `WolvenKitVersion`. The Build workflow (`.github/workflows/build.yml`) checks that it compiles and that the run-time files are in the output. Before merging, on a machine with the game: build into a scratch folder (`dotnet build src/REDbridge -c Release -o <folder>`), run `tools/probe.py` and REDcode's `npm run smoke` against it, then release the bridge.
 
-### Building the libraries
+**Reading WolvenKit's source.** `npm run wolvenkit:source` clones WolvenKit at `WolvenKitVersion` into `external/WolvenKit` (shallow, about a minute), or moves an existing clone to that tag. git ignores the folder. The build does not use it.
 
-The submodule is not built on its own. Building the bridge (section 5) builds `Core`, `RED4`, `Common` and `Modkit` from `external/WolvenKit` as project references. After a plain `git clone`, fetch the submodule first:
+### What the bridge ships from WolvenKit
 
-```powershell
-git submodule update --init
-```
-
-Build one project at a time with parallelism off and without the shared compiler server: the parallel build was killed for lack of memory on the 16 GB laptop, and the single-threaded build is fast anyway. These flags are already in the bridge build command in section 5.
-
-| Project | Build time (single-threaded) | Output |
-|---|---|---|
-| WolvenKit.Core | seconds | 0.1 MB |
-| WolvenKit.RED4 | 39 s | 11.6 MB |
-| WolvenKit.Common | 7 s | 16.4 MB |
-| WolvenKit.Modkit | 8 s | 0.5 MB |
-
-### What the Modkit output contains
-
-`WolvenKit.Modkit/bin/Release/net10.0`: 129 MB, 25 files. This is the set a bridge that references all four libraries has to ship, before trimming.
+Recorded from the submodule build in C0; the package build gives the same set.
 
 | Group | Files | Notes |
 |---|---|---|
@@ -89,20 +77,18 @@ The ClearScript V8 native library (`ClearScriptV8.win-x64.dll`) is not in this b
 ## 4. Repository and GitHub
 
 ```powershell
-git clone --recurse-submodules https://github.com/Edgemodders/REDbridge.git
+git clone https://github.com/Edgemodders/REDbridge.git
 cd REDbridge
 git config user.name  "CyberbuildsAI"
 git config user.email "340969962+CyberbuildsAI@users.noreply.github.com"
 ```
-
-The submodule is added in C1. Until then there is nothing to build in this repo.
 
 ## 5. Building and running the bridge
 
 From clone to a working bridge. Verified on both reference machines on 2026-10-11.
 
 ```powershell
-git clone --recurse-submodules https://github.com/Edgemodders/REDbridge.git
+git clone https://github.com/Edgemodders/REDbridge.git
 cd REDbridge
 npm run build:full                              # dotnet restore, then dotnet build
 npm run probe -- "<Cyberpunk 2077 folder>"      # runs tools\probe.py against the Release build
@@ -114,16 +100,15 @@ Day to day:
 |---|---|
 | `npm run build` | `dotnet build src\REDbridge\REDbridge.csproj -c Release --no-restore -m:1 -p:UseSharedCompilation=false -nodeReuse:false -v q` |
 | `npm run build:full` | `dotnet restore`, then `npm run build`. Needed after a clone or when packages change |
-| `npm run update` | `git pull --recurse-submodules`, `git submodule update --init`, then `npm run build:full` |
+| `npm run update` | `git pull`, then `npm run build:full` |
+| `npm run wolvenkit:source` | Fetches WolvenKit's source at `WolvenKitVersion` into `external/WolvenKit`, for reading |
 | `npm run probe -- "<game folder>"` | `python -I tools\probe.py src\REDbridge\bin\Release\net10.0\REDbridge.exe "<game folder>"` |
 | `npm run clean` | `dotnet clean` |
 
 Notes:
 
-- `git pull` and a plain `git clone` do not fetch submodule contents; `npm run update` and `git submodule update --init` do. WolvenKit is large, so the first fetch takes a few minutes. If it stops with "Filename too long", run `git config --global core.longpaths true` and repeat.
-- The build compiles WolvenKit's `Core`, `RED4`, `Common` and `Modkit` from the submodule, then the bridge: about 45 s to a minute single-threaded. `-v q` hides the 394 nullability warnings from WolvenKit's RED4 project, which are expected. Output: `src\REDbridge\bin\Release\net10.0\REDbridge.exe` with about 200 MB beside it.
+- The first `npm run build:full` downloads WolvenKit's packages and their dependencies from NuGet; later builds take seconds. Output: `src\REDbridge\bin\Release\net10.0\REDbridge.exe` with about 200 MB beside it.
 - The probe starts the bridge with the game folder, loads the archive indexes (the game does not need to be running) and calls every method: list and search, CR2W to JSON and back with a byte comparison, texture to PNG, hashing. About 5 to 8 s. Output goes to `probe-out`, which git ignores.
-- Do not build the WolvenKit projects on their own with paths like `WolvenKit.Modkit/WolvenKit.Modkit.csproj`; those paths exist only inside `external\WolvenKit`, and the bridge build covers them.
 - The npm scripts run `dotnet` through `tools/dotnet.mjs`, which prefers `DOTNET_ROOT`, then the per-user SDK in `%LOCALAPPDATA%\Microsoft\dotnet`, then `dotnet` on `PATH`. So the per-user install from section 2 works without changing `PATH`. The probe still needs `DOTNET_ROOT` for the per-user runtime (next section).
 - The REDcode extension checks the bridge's version at startup and says when the bridge is older than it needs. `npm run update` here fixes that.
 

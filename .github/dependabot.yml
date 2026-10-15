@@ -1,0 +1,17 @@
+# Proposes WolvenKit's new releases: one PR that raises WolvenKitVersion in src/REDbridge/REDbridge.csproj,
+# which the four WolvenKit packages and the DirectXTexNet path share. The Build workflow checks that it
+# compiles; before merging, a session runs tools/probe.py and REDcode's smoke test against the game,
+# which CI cannot do (see CLAUDE.md). Other packages are left alone, to keep the PRs about WolvenKit.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /src/REDbridge
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: "WolvenKit.*"
+    groups:
+      wolvenkit:
+        patterns: ["WolvenKit.*"]
+    commit-message:
+      prefix: "WolvenKit"

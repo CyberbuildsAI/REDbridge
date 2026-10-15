@@ -14,11 +14,12 @@ dist/
 *.exe
 rtti-dump*
 
-# build output of the bridge and the submodule
+# build output of the bridge
 src/**/bin/
 src/**/obj/
-external/WolvenKit/**/bin/
-external/WolvenKit/**/obj/
+
+# WolvenKit's source, fetched for reading by npm run wolvenkit:source; the build uses its NuGet packages
+external/
 
 # probe output written by tools/probe.py
 probe-out/
