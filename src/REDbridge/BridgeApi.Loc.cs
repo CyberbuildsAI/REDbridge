@@ -14,8 +14,8 @@ namespace REDbridge;
 /// </summary>
 public sealed partial class BridgeApi
 {
-    /// <summary>One entry: the LocKey number (as text, since it can pass 2^53), the secondary key, both texts, and where it comes from.</summary>
-    public sealed record LocEntry(string Key, string? SecondaryKey, string Female, string Male, string Source, string? File = null);
+    /// <summary>One entry: the LocKey number (as text, since it can pass 2^53), the secondary key, both texts, and where it comes from; for a project entry, its file and its row in that file.</summary>
+    public sealed record LocEntry(string Key, string? SecondaryKey, string Female, string Male, string Source, string? File = null, int? Index = null);
     public sealed record LocSearch(int Total, IReadOnlyList<LocEntry> Items);
     public sealed record LocLanguage(string Language, bool Base, bool Ep1);
 
@@ -106,7 +106,121 @@ public sealed partial class BridgeApi
         return result;
     }
 
+    /// <summary>A project's onscreens files for a language: relative to the project, whether it exists yet, and the .xl that names it (null for one found by its language folder).</summary>
+    public sealed record LocProjectFile(string File, bool Exists, string? Xl);
+    public sealed record LocNewFile(string File, bool Created, string? Xl, bool XlWritten);
+
+    /// <summary>The project's onscreens files for a language: those its .xl files name (existing or not), then any .json under source/archive with the language as a folder.</summary>
+    [JsonRpcMethod("loc.projectFiles")]
+    public IReadOnlyList<LocProjectFile> LocProjectFiles(string projectDir, string language = "en-us") => ProjectLocFilesOf(projectDir, language);
+
+    /// <summary>
+    /// Makes sure the project has an onscreens file for the language and returns it: the first
+    /// existing one; else a file an .xl already names, written empty; else
+    /// <c>source/archive/&lt;mod&gt;/localization/&lt;language&gt;.json</c>, written empty and added to
+    /// an .xl under <c>localization: onscreens:</c> (a new <c>&lt;mod&gt;.archive.xl</c> in
+    /// source/resources when the project has none).
+    /// </summary>
+    [JsonRpcMethod("loc.newFile")]
+    public LocNewFile LocNewFileMethod(string projectDir, string modName, string language = "en-us")
+    {
+        var known = ProjectLocFilesOf(projectDir, language);
+        if (known.FirstOrDefault(f => f.Exists) is { } existing)
+        {
+            return new LocNewFile(existing.File, false, existing.Xl, false);
+        }
+        if (known.FirstOrDefault(f => f.Xl is not null) is { } named)
+        {
+            WriteCr2w(Path.Combine(projectDir, named.File), EmptyOnscreens());
+            return new LocNewFile(named.File, true, named.Xl, false);
+        }
+        var safe = SafeName(modName);
+        if (safe.Length == 0)
+        {
+            safe = "mod";
+        }
+        var archivePath = $"{safe}\\localization\\{language}.json";
+        var file = Path.Combine("source", "archive", safe, "localization", $"{language}.json");
+        WriteCr2w(Path.Combine(projectDir, file), EmptyOnscreens());
+        var resources = Path.Combine(projectDir, "source", "resources");
+        var xl = Directory.Exists(resources) ? Directory.EnumerateFiles(resources, "*.xl", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase).FirstOrDefault() : null;
+        xl ??= Path.Combine(resources, $"{safe}.archive.xl");
+        var text = File.Exists(xl) ? File.ReadAllText(xl) : "";
+        Directory.CreateDirectory(Path.GetDirectoryName(xl)!);
+        File.WriteAllText(xl, XlWithOnscreens(text, language, archivePath));
+        return new LocNewFile(file, true, Path.GetRelativePath(projectDir, xl), true);
+    }
+
     // ---- helpers --------------------------------------------------------------------------
+
+    private static RedBaseClass EmptyOnscreens() =>
+        new JsonResource { Root = new CHandle<ISerializable>(new localizationPersistenceOnScreenEntries()) };
+
+    private static List<LocProjectFile> ProjectLocFilesOf(string projectDir, string language)
+    {
+        var archive = Path.Combine(projectDir, "source", "archive");
+        var resources = Path.Combine(projectDir, "source", "resources");
+        var files = new List<LocProjectFile>();
+        if (Directory.Exists(resources))
+        {
+            foreach (var xl in Directory.EnumerateFiles(resources, "*.xl", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (var p in XlOnscreens(File.ReadAllText(xl), language))
+                {
+                    var full = Path.GetFullPath(Path.Combine(archive, p.Replace('/', '\\').Replace('\\', Path.DirectorySeparatorChar)));
+                    files.Add(new LocProjectFile(Path.GetRelativePath(projectDir, full), File.Exists(full), Path.GetRelativePath(projectDir, xl)));
+                }
+            }
+        }
+        if (Directory.Exists(archive))
+        {
+            files.AddRange(Directory.EnumerateFiles(archive, "*.json", SearchOption.AllDirectories)
+                .Where(f => Path.GetRelativePath(archive, f).Split(Path.DirectorySeparatorChar).SkipLast(1).Any(s => s.Equals(language, StringComparison.OrdinalIgnoreCase)))
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .Select(f => new LocProjectFile(Path.GetRelativePath(projectDir, f), true, null)));
+        }
+        return files.DistinctBy(f => f.File, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>
+    /// The .xl text with "<c>language: path</c>" under <c>localization: onscreens:</c>, adding the
+    /// blocks it lacks. Lines are inserted, never rewritten, so the rest of the file stays as it was.
+    /// </summary>
+    internal static string XlWithOnscreens(string xl, string language, string archivePath)
+    {
+        var nl = xl.Contains("\r\n") ? "\r\n" : "\n";
+        var lines = xl.Length == 0 ? new List<string>() : xl.Replace("\r\n", "\n").Split('\n').ToList();
+        if (lines.Count > 0 && lines[^1].Length == 0)
+        {
+            lines.RemoveAt(lines.Count - 1);
+        }
+        static int Indent(string l) => l.Length - l.TrimStart().Length;
+        var loc = lines.FindIndex(l => Indent(l) == 0 && l.TrimEnd() == "localization:");
+        var entry = $"{language}: {archivePath}";
+        if (loc < 0)
+        {
+            lines.AddRange(["localization:", "  onscreens:", $"    {entry}"]);
+        }
+        else
+        {
+            // The localization block: the lines after it that are indented or blank.
+            var end = loc + 1;
+            while (end < lines.Count && (lines[end].Trim().Length == 0 || Indent(lines[end]) > 0))
+            {
+                end++;
+            }
+            var on = lines.FindIndex(loc + 1, end - loc - 1, l => l.Trim() == "onscreens:");
+            if (on < 0)
+            {
+                lines.InsertRange(loc + 1, ["  onscreens:", $"    {entry}"]);
+            }
+            else
+            {
+                lines.Insert(on + 1, $"{new string(' ', Indent(lines[on]) + 2)}{entry}");
+            }
+        }
+        return string.Join(nl, lines) + nl;
+    }
 
     private static string OnscreensPath(string root, string language) => $"{root}\\localization\\{language}\\onscreens\\onscreens.json";
 
@@ -157,7 +271,7 @@ public sealed partial class BridgeApi
 
     private static IEnumerable<LocEntry> EntriesOf(RedBaseClass? root, string source, string? file) =>
         root is JsonResource { Root.Chunk: localizationPersistenceOnScreenEntries list }
-            ? list.Entries.Select(e => new LocEntry(((ulong)e.PrimaryKey).ToString(CultureInfo.InvariantCulture), NullIfEmpty(e.SecondaryKey), (string?)e.FemaleVariant ?? "", (string?)e.MaleVariant ?? "", source, file))
+            ? list.Entries.Select((e, i) => new LocEntry(((ulong)e.PrimaryKey).ToString(CultureInfo.InvariantCulture), NullIfEmpty(e.SecondaryKey), (string?)e.FemaleVariant ?? "", (string?)e.MaleVariant ?? "", source, file, file is null ? null : i))
             : [];
 
     private static string? NullIfEmpty(CString s) => string.IsNullOrEmpty((string?)s) ? null : (string)s!;
@@ -187,23 +301,8 @@ public sealed partial class BridgeApi
     /// </summary>
     private List<LocEntry> ProjectEntries(string projectDir, string language)
     {
-        var archive = Path.Combine(projectDir, "source", "archive");
-        var files = new List<string>();
-        var resources = Path.Combine(projectDir, "source", "resources");
-        if (Directory.Exists(resources))
-        {
-            foreach (var xl in Directory.EnumerateFiles(resources, "*.xl", SearchOption.AllDirectories))
-            {
-                files.AddRange(XlOnscreens(File.ReadAllText(xl), language).Select(p => Path.Combine(archive, p.Replace('/', Path.DirectorySeparatorChar))));
-            }
-        }
-        if (Directory.Exists(archive))
-        {
-            files.AddRange(Directory.EnumerateFiles(archive, "*.json", SearchOption.AllDirectories)
-                .Where(f => Path.GetRelativePath(archive, f).Split(Path.DirectorySeparatorChar).Any(s => s.Equals(language, StringComparison.OrdinalIgnoreCase))));
-        }
         var entries = new List<LocEntry>();
-        foreach (var file in files.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
+        foreach (var file in ProjectLocFilesOf(projectDir, language).Where(f => f.Exists).Select(f => Path.Combine(projectDir, f.File)))
         {
             var written = File.GetLastWriteTimeUtc(file);
             lock (ProjectLocFiles)
