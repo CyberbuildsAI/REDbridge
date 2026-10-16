@@ -14,7 +14,11 @@ namespace REDbridge;
 /// </summary>
 public sealed partial class BridgeApi
 {
-    /// <summary>One entry: the LocKey number (as text, since it can pass 2^53), the secondary key, both texts, and where it comes from; for a project entry, its file and its row in that file.</summary>
+    /// <summary>
+    /// One entry: the LocKey number (as text, since it can pass 2^53), the secondary key, both texts, where
+    /// it comes from, its file and its row in that file. The file is relative to the project for a project
+    /// entry, and the game path of the onscreens file for a game one.
+    /// </summary>
     public sealed record LocEntry(string Key, string? SecondaryKey, string Female, string Male, string Source, string? File = null, int? Index = null);
     public sealed record LocSearch(int Total, IReadOnlyList<LocEntry> Items);
     public sealed record LocLanguage(string Language, bool Base, bool Ep1);
@@ -247,7 +251,7 @@ public sealed partial class BridgeApi
                 var file = _host.Archives.Lookup(OnscreensPath(root, language));
                 if (file.HasValue)
                 {
-                    entries.AddRange(EntriesOf(ReadCr2w(file.Value).RootChunk, root, null));
+                    entries.AddRange(EntriesOf(ReadCr2w(file.Value).RootChunk, root, OnscreensPath(root, language)));
                 }
             }
             var byKey = new Dictionary<ulong, LocEntry>();
@@ -269,9 +273,9 @@ public sealed partial class BridgeApi
         }
     }
 
-    private static IEnumerable<LocEntry> EntriesOf(RedBaseClass? root, string source, string? file) =>
+    private static IEnumerable<LocEntry> EntriesOf(RedBaseClass? root, string source, string file) =>
         root is JsonResource { Root.Chunk: localizationPersistenceOnScreenEntries list }
-            ? list.Entries.Select((e, i) => new LocEntry(((ulong)e.PrimaryKey).ToString(CultureInfo.InvariantCulture), NullIfEmpty(e.SecondaryKey), (string?)e.FemaleVariant ?? "", (string?)e.MaleVariant ?? "", source, file, file is null ? null : i))
+            ? list.Entries.Select((e, i) => new LocEntry(((ulong)e.PrimaryKey).ToString(CultureInfo.InvariantCulture), NullIfEmpty(e.SecondaryKey), (string?)e.FemaleVariant ?? "", (string?)e.MaleVariant ?? "", source, file, i))
             : [];
 
     private static string? NullIfEmpty(CString s) => string.IsNullOrEmpty((string?)s) ? null : (string)s!;
