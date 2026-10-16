@@ -114,7 +114,7 @@ public sealed partial class BridgeApi
     public sealed record LocProjectFile(string File, bool Exists, string? Xl);
     public sealed record LocNewFile(string File, bool Created, string? Xl, bool XlWritten);
 
-    /// <summary>The project's onscreens files for a language: those its .xl files name (existing or not), then any .json under source/archive with the language as a folder.</summary>
+    /// <summary>The project's onscreens files for a language: those its .xl files name (existing or not), then any .json under source/archive in an onscreens folder below the language's, as the game keeps them.</summary>
     [JsonRpcMethod("loc.projectFiles")]
     public IReadOnlyList<LocProjectFile> LocProjectFiles(string projectDir, string language = "en-us") => ProjectLocFilesOf(projectDir, language);
 
@@ -178,8 +178,14 @@ public sealed partial class BridgeApi
         }
         if (Directory.Exists(archive))
         {
+            // As the game keeps them: under <language>\onscreens\. Subtitles and other localization JSON beside them are not onscreens files.
             files.AddRange(Directory.EnumerateFiles(archive, "*.json", SearchOption.AllDirectories)
-                .Where(f => Path.GetRelativePath(archive, f).Split(Path.DirectorySeparatorChar).SkipLast(1).Any(s => s.Equals(language, StringComparison.OrdinalIgnoreCase)))
+                .Where(f =>
+                {
+                    var dirs = Path.GetRelativePath(archive, f).Split(Path.DirectorySeparatorChar).SkipLast(1).ToList();
+                    var at = dirs.FindIndex(s => s.Equals(language, StringComparison.OrdinalIgnoreCase));
+                    return at >= 0 && dirs.Skip(at + 1).Any(s => s.Equals("onscreens", StringComparison.OrdinalIgnoreCase));
+                })
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .Select(f => new LocProjectFile(Path.GetRelativePath(projectDir, f), true, null)));
         }
@@ -300,7 +306,7 @@ public sealed partial class BridgeApi
 
     /// <summary>
     /// The project's onscreens entries in a language: the files its .xl files name for that language,
-    /// then onscreens files under source/archive with that language as a folder in their path. Each
+    /// then onscreens files under source/archive in an onscreens folder below that language's. Each
     /// file is read again only when it changes.
     /// </summary>
     private List<LocEntry> ProjectEntries(string projectDir, string language)
