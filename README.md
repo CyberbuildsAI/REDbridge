@@ -39,12 +39,27 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | `convert` | texture.toPng, texture.fileToPng, texture.imageToPng (a plain TGA, DDS, TIFF, BMP, JPG or PNG to PNG, for viewing), mesh.toGltf, audio.toWav | WolvenKit.Common, WolvenKit.Modkit |
 | `mesh` | info, infoMany: a mesh's or an entity template's bounds and appearance names, for an asset index | WolvenKit.RED4 |
 | `sector` | build: an EDGEbuilder scene into a streaming sector, a streaming block and an ArchiveXL file in a REDcode project | WolvenKit.RED4 |
-| `project` | pack (a folder into `<modName>.archive` through WolvenKit's packer, with warnings for paths with capital letters or spaces); export (a file under `source/archive` to the same path under `source/raw`: glTF, an image, WAV and so on) and import (back again, an existing texture keeping all its settings), each listing the files written | WolvenKit.Modkit |
+| `project` | pack (a folder into `<modName>.archive` through WolvenKit's packer, with warnings for paths with capital letters or spaces); export (a file under `source/archive` to the same path under `source/raw`: glTF, an image, WAV and so on) and import (back again, an existing texture keeping all its settings; a GLB over a `template` mesh for a new asset, 0.9.0), each listing the files written | WolvenKit.Modkit |
 | `modkit` | build | WolvenKit.Modkit |
 | `tweakdb` | types, records (by type, subtypes included, or path prefix, with chosen flats and LocKey text), record, flat, search, names (ids to paths, no load needed). Read offline from the game's `tweakdb_ep1.bin`, loaded on the first call in about 12 s | WolvenKit.RED4 |
 | `sound` | events: the sound event names WolvenKit knows, with their Wwise hashes, which name the event groups in `sfx_container.opusinfo`; importWavs: override game sound effects in a project from `<hash>.wav` files, writing the changed `.opuspak` files and a new index into its `source/archive` (0.9.0) | WolvenKit.Modkit's `soundEvents.json`, `OpusInfo` and opus-tools |
 | `hash` | fnv1a64, resolve | WolvenKit.Core |
 | `script` | not planned: REDcode dropped its script runner | |
+
+## Mesh import
+
+A GLB or glTF becomes a `.mesh` only over an existing one: WolvenKit's importer has no direct mesh import. For a new asset, `project.import` takes a `template`, a game path or a `.mesh` on disk, which it copies to the target first. A mesh already at the target is imported over as it is, so re-imports keep later changes. What a GLB import does to the mesh, from WolvenKit 9.1.0's `MeshImportTools.ImportMesh` (checked against the game's files, not yet in the game):
+
+| Part of the mesh | After the import |
+|---|---|
+| Geometry | From the GLB: one submesh per node with a mesh, sorted by node name, its first primitive. The GLB must have normals and tangents (Blender: export Tangents) and triangles; a node name with `LOD_1`, `LOD_2`, `LOD_4` or `LOD_8` sets its LOD |
+| Bounds | Recomputed from the GLB |
+| Material entries and the materials | The template's, unchanged. The GLB's materials are ignored, unless a `.Material.json` WolvenKit wrote lies beside it |
+| Appearances | The template's names. Each one's `chunkMaterials` is sized to the new submesh count by the bridge, since WolvenKit leaves it as it was: a submesh keeps the material at its index, or the last one |
+| Rig and bones | The template's bone set, grown from the GLB's skin when its joints carry rotations |
+| Garment support | Rebuilt from the GLB when garment-support data is in it |
+
+The result's `mesh` field reports the submesh count, the GLB's material names per submesh (the materials for EDGEmat to make), the mesh's material entries, its appearances and what was resized. WolvenKit's own GLB exports name their materials `Default`.
 
 ## Repository layout
 
