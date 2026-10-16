@@ -10,7 +10,7 @@ namespace REDbridge;
 /// the base game and Phantom Liberty, for REDcode's LocKey browser (C5 V4) and its MCP tools. A
 /// project's own onscreens files win over the game's, as ArchiveXL makes them do in game: the ones
 /// its <c>.xl</c> files name under <c>localization: onscreens:</c>, and any onscreens file under
-/// <c>source/archive</c> with a language folder in its path.
+/// <c>source/archive</c> in an onscreens folder below its language folder, as the game keeps them.
 /// </summary>
 public sealed partial class BridgeApi
 {
