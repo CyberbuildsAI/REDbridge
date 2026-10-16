@@ -43,6 +43,7 @@ REDbridge runs [WolvenKit](https://github.com/WolvenKit/WolvenKit)'s headless C#
 | `modkit` | build | WolvenKit.Modkit |
 | `tweakdb` | types, records (by type, subtypes included, or path prefix, with chosen flats and LocKey text), record, flat, search, names (ids to paths, no load needed). Read offline from the game's `tweakdb_ep1.bin`, loaded on the first call in about 12 s | WolvenKit.RED4 |
 | `sound` | events: the sound event names WolvenKit knows, with their Wwise hashes, which name the event groups in `sfx_container.opusinfo`; importWavs: override game sound effects in a project from `<hash>.wav` files, writing the changed `.opuspak` files and a new index into its `source/archive` (0.9.0) | WolvenKit.Modkit's `soundEvents.json`, `OpusInfo` and opus-tools |
+| `loc` | languages, search (by LocKey, secondary key or words in the texts), get (by LocKey or secondary key): the on-screen texts of the base game and Phantom Liberty, read offline, with a project's own onscreens files laid over them (the ones its `.xl` files name, and any under a language folder) | WolvenKit.RED4 |
 | `hash` | fnv1a64, resolve | WolvenKit.Core |
 | `script` | not planned: REDcode dropped its script runner | |
 
@@ -87,7 +88,7 @@ WolvenKit comes from its own NuGet packages (`WolvenKit.Core`, `.RED4`, `.Common
 - **C0 Decide.** Build WolvenKit's headless libraries locally and confirm what the bridge references. Agree the approach with the WolvenKit team.
 - **C1 Bridge MVP.** `archive.list`, `cr2w.toJson`, `cr2w.fromJson`, `texture.toPng`, `hash.*` over stdio. Proves the data path with REDcode.
 - **C2 to C4.** Method groups for browsing, editing, import, export and packing, as REDcode's extensions need them.
-- **C5.** Methods for REDcode's viewers: audio (`sound.events`, 0.7.2) and TweakDB (`tweakdb.*`, 0.8.0). No script host: REDcode dropped its script runner (agents and MCP tools cover it). The MCP server lives in REDcode as [`redcode-mcp`](https://github.com/Edgemodders/REDcode/tree/main/packages/redcode-mcp), MIT, over stdio.
+- **C5.** Methods for REDcode's viewers: audio (`sound.events`, 0.7.2) TweakDB (`tweakdb.*`, 0.8.0) and LocKeys (`loc.*`, 0.10.0). No script host: REDcode dropped its script runner (agents and MCP tools cover it). The MCP server lives in REDcode as [`redcode-mcp`](https://github.com/Edgemodders/REDcode/tree/main/packages/redcode-mcp), MIT, over stdio.
 
 Phases follow the REDcode roadmap.
 

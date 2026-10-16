@@ -1,0 +1,292 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
+using StreamJsonRpc;
+using WolvenKit.RED4.Types;
+
+namespace REDbridge;
+
+/// <summary>
+/// The game's on-screen texts (LocKeys), read offline from each language's <c>onscreens.json</c> in
+/// the base game and Phantom Liberty, for REDcode's LocKey browser (C5 V4) and its MCP tools. A
+/// project's own onscreens files win over the game's, as ArchiveXL makes them do in game: the ones
+/// its <c>.xl</c> files name under <c>localization: onscreens:</c>, and any onscreens file under
+/// <c>source/archive</c> with a language folder in its path.
+/// </summary>
+public sealed partial class BridgeApi
+{
+    /// <summary>One entry: the LocKey number (as text, since it can pass 2^53), the secondary key, both texts, and where it comes from.</summary>
+    public sealed record LocEntry(string Key, string? SecondaryKey, string Female, string Male, string Source, string? File = null);
+    public sealed record LocSearch(int Total, IReadOnlyList<LocEntry> Items);
+    public sealed record LocLanguage(string Language, bool Base, bool Ep1);
+
+    private sealed class LocIndex
+    {
+        public required List<LocEntry> Entries { get; init; }
+        public required Dictionary<ulong, LocEntry> ByKey { get; init; }
+        public required Dictionary<string, LocEntry> BySecondary { get; init; }
+    }
+
+    /// <summary>The languages the game ships text for (WolvenKit's list, as the folder names under localization).</summary>
+    private static readonly string[] LocLanguages =
+    [
+        "en-us", "ar-ar", "cz-cz", "de-de", "es-es", "es-mx", "fr-fr", "hu-hu", "it-it", "jp-jp",
+        "kr-kr", "pl-pl", "pt-br", "ru-ru", "th-th", "tr-tr", "ua-ua", "zh-cn", "zh-tw",
+    ];
+
+    private static readonly Dictionary<string, LocIndex> GameLoc = new();
+    private static readonly Dictionary<string, (DateTime Written, List<LocEntry> Entries)> ProjectLocFiles = new(StringComparer.OrdinalIgnoreCase);
+
+    // ---- methods --------------------------------------------------------------------------
+
+    /// <summary>The languages with on-screen texts in the loaded archives, and which halves (base, Phantom Liberty) have them.</summary>
+    [JsonRpcMethod("loc.languages")]
+    public IReadOnlyList<LocLanguage> LocLanguagesList()
+    {
+        RequireGame();
+        return LocLanguages
+            .Select(l => new LocLanguage(l, _host.Archives.Lookup(OnscreensPath("base", l)).HasValue, _host.Archives.Lookup(OnscreensPath("ep1", l)).HasValue))
+            .Where(l => l.Base || l.Ep1)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Entries matching the query. "LocKey#123" or a number finds that LocKey; "LocKey#name" a secondary
+    /// key. Otherwise every word must appear, any case, in the secondary key or either text; exact
+    /// secondary keys come first. With <paramref name="projectDir"/>, the project's entries replace the
+    /// game's ones with the same key and are searched too.
+    /// </summary>
+    [JsonRpcMethod("loc.search")]
+    public LocSearch LocSearchMethod(string query, string language = "en-us", int limit = 200, string? projectDir = null)
+    {
+        var all = Merged(language, projectDir);
+        var q = query.Trim();
+        List<LocEntry> hits;
+        if (TryKey(q, out var key))
+        {
+            hits = all.Where(e => e.Key == key.ToString(CultureInfo.InvariantCulture)).ToList();
+        }
+        else
+        {
+            var bare = q.StartsWith("LocKey#", StringComparison.OrdinalIgnoreCase) ? q[7..] : q;
+            var words = bare.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            hits = words.Length == 0 ? [] : all
+                .Where(e => words.All(w =>
+                    (e.SecondaryKey?.Contains(w, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    e.Female.Contains(w, StringComparison.OrdinalIgnoreCase) ||
+                    e.Male.Contains(w, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(e => string.Equals(e.SecondaryKey, bare, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ToList();
+        }
+        return new LocSearch(hits.Count, hits.Take(Math.Clamp(limit, 1, 20000)).ToList());
+    }
+
+    /// <summary>Entries by key: "LocKey#123", "123" or a secondary key, with or without "LocKey#". null for a key with no text.</summary>
+    [JsonRpcMethod("loc.get")]
+    public IReadOnlyDictionary<string, LocEntry?> LocGet(IReadOnlyList<string> keys, string language = "en-us", string? projectDir = null)
+    {
+        var game = GameIndex(language);
+        var project = projectDir is null ? [] : ProjectEntries(projectDir, language);
+        var result = new Dictionary<string, LocEntry?>();
+        foreach (var raw in keys)
+        {
+            var k = raw.Trim();
+            var bare = k.StartsWith("LocKey#", StringComparison.OrdinalIgnoreCase) ? k[7..] : k;
+            LocEntry? found;
+            if (TryKey(k, out var number))
+            {
+                var text = number.ToString(CultureInfo.InvariantCulture);
+                found = project.LastOrDefault(e => e.Key == text) ?? game.ByKey.GetValueOrDefault(number);
+            }
+            else
+            {
+                found = project.LastOrDefault(e => e.SecondaryKey == bare) ?? game.BySecondary.GetValueOrDefault(bare);
+            }
+            result[raw] = found;
+        }
+        return result;
+    }
+
+    // ---- helpers --------------------------------------------------------------------------
+
+    private static string OnscreensPath(string root, string language) => $"{root}\\localization\\{language}\\onscreens\\onscreens.json";
+
+    /// <summary>"LocKey#123" or "123": the number. A secondary key, even one of digits after "LocKey#", is matched as a number first.</summary>
+    private static bool TryKey(string text, out ulong key)
+    {
+        var bare = text.StartsWith("LocKey#", StringComparison.OrdinalIgnoreCase) ? text[7..] : text;
+        return ulong.TryParse(bare, NumberStyles.None, CultureInfo.InvariantCulture, out key);
+    }
+
+    /// <summary>The game's entries in a language, Phantom Liberty's after the base game's, loaded once.</summary>
+    private LocIndex GameIndex(string language)
+    {
+        lock (GameLoc)
+        {
+            if (GameLoc.TryGetValue(language, out var known))
+            {
+                return known;
+            }
+            RequireGame();
+            var entries = new List<LocEntry>();
+            foreach (var root in new[] { "base", "ep1" })
+            {
+                var file = _host.Archives.Lookup(OnscreensPath(root, language));
+                if (file.HasValue)
+                {
+                    entries.AddRange(EntriesOf(ReadCr2w(file.Value).RootChunk, root, null));
+                }
+            }
+            var byKey = new Dictionary<ulong, LocEntry>();
+            var bySecondary = new Dictionary<string, LocEntry>();
+            foreach (var e in entries)
+            {
+                var key = ulong.Parse(e.Key, CultureInfo.InvariantCulture);
+                if (key != 0)
+                {
+                    byKey[key] = e;
+                }
+                if (!string.IsNullOrEmpty(e.SecondaryKey))
+                {
+                    bySecondary[e.SecondaryKey] = e;
+                }
+            }
+            _host.Log.Info($"Localization {language}: {entries.Count:N0} entries");
+            return GameLoc[language] = new LocIndex { Entries = entries, ByKey = byKey, BySecondary = bySecondary };
+        }
+    }
+
+    private static IEnumerable<LocEntry> EntriesOf(RedBaseClass? root, string source, string? file) =>
+        root is JsonResource { Root.Chunk: localizationPersistenceOnScreenEntries list }
+            ? list.Entries.Select(e => new LocEntry(((ulong)e.PrimaryKey).ToString(CultureInfo.InvariantCulture), NullIfEmpty(e.SecondaryKey), (string?)e.FemaleVariant ?? "", (string?)e.MaleVariant ?? "", source, file))
+            : [];
+
+    private static string? NullIfEmpty(CString s) => string.IsNullOrEmpty((string?)s) ? null : (string)s!;
+
+    /// <summary>The game's entries with the project's laid over them: a project entry replaces the game's with the same LocKey or secondary key.</summary>
+    private List<LocEntry> Merged(string language, string? projectDir)
+    {
+        var game = GameIndex(language);
+        if (projectDir is null)
+        {
+            return game.Entries;
+        }
+        var project = ProjectEntries(projectDir, language);
+        if (project.Count == 0)
+        {
+            return game.Entries;
+        }
+        var keys = project.Where(e => e.Key != "0").Select(e => e.Key).ToHashSet();
+        var secondary = project.Where(e => e.SecondaryKey is not null).Select(e => e.SecondaryKey!).ToHashSet();
+        return project.Concat(game.Entries.Where(e => !keys.Contains(e.Key) && (e.SecondaryKey is null || !secondary.Contains(e.SecondaryKey)))).ToList();
+    }
+
+    /// <summary>
+    /// The project's onscreens entries in a language: the files its .xl files name for that language,
+    /// then onscreens files under source/archive with that language as a folder in their path. Each
+    /// file is read again only when it changes.
+    /// </summary>
+    private List<LocEntry> ProjectEntries(string projectDir, string language)
+    {
+        var archive = Path.Combine(projectDir, "source", "archive");
+        var files = new List<string>();
+        var resources = Path.Combine(projectDir, "source", "resources");
+        if (Directory.Exists(resources))
+        {
+            foreach (var xl in Directory.EnumerateFiles(resources, "*.xl", SearchOption.AllDirectories))
+            {
+                files.AddRange(XlOnscreens(File.ReadAllText(xl), language).Select(p => Path.Combine(archive, p.Replace('/', Path.DirectorySeparatorChar))));
+            }
+        }
+        if (Directory.Exists(archive))
+        {
+            files.AddRange(Directory.EnumerateFiles(archive, "*.json", SearchOption.AllDirectories)
+                .Where(f => Path.GetRelativePath(archive, f).Split(Path.DirectorySeparatorChar).Any(s => s.Equals(language, StringComparison.OrdinalIgnoreCase))));
+        }
+        var entries = new List<LocEntry>();
+        foreach (var file in files.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).Where(File.Exists))
+        {
+            var written = File.GetLastWriteTimeUtc(file);
+            lock (ProjectLocFiles)
+            {
+                if (!ProjectLocFiles.TryGetValue(file, out var cached) || cached.Written != written)
+                {
+                    List<LocEntry> read;
+                    try
+                    {
+                        using var fs = File.OpenRead(file);
+                        read = EntriesOf(_host.Parser.ReadRed4File(fs)?.RootChunk, "project", Path.GetRelativePath(projectDir, file)).ToList();
+                    }
+                    catch
+                    {
+                        read = []; // not a CR2W onscreens file
+                    }
+                    cached = ProjectLocFiles[file] = (written, read);
+                }
+                entries.AddRange(cached.Entries);
+            }
+        }
+        return entries;
+    }
+
+    /// <summary>
+    /// The onscreens paths an ArchiveXL file names for a language: the "<c>language: path</c>" lines,
+    /// or "<c>language:</c>" followed by "<c>- path</c>" items, under <c>localization: onscreens:</c>.
+    /// A small reader for that one block, not a YAML parser.
+    /// </summary>
+    internal static IEnumerable<string> XlOnscreens(string xl, string language)
+    {
+        var inOnscreens = false;
+        var inLanguage = false;
+        var onscreensIndent = -1;
+        foreach (var raw in xl.Split('\n'))
+        {
+            var line = raw.TrimEnd('\r');
+            var text = line.Trim();
+            if (text.Length == 0 || text.StartsWith('#'))
+            {
+                continue;
+            }
+            var indent = line.Length - line.TrimStart().Length;
+            if (text.StartsWith("onscreens:", StringComparison.Ordinal))
+            {
+                inOnscreens = true;
+                inLanguage = false;
+                onscreensIndent = indent;
+                continue;
+            }
+            if (!inOnscreens)
+            {
+                continue;
+            }
+            if (indent <= onscreensIndent)
+            {
+                inOnscreens = false;
+                continue;
+            }
+            var pair = Regex.Match(text, @"^([A-Za-z]{2}-[A-Za-z]{2})\s*:\s*(.*)$");
+            if (pair.Success)
+            {
+                inLanguage = pair.Groups[1].Value.Equals(language, StringComparison.OrdinalIgnoreCase);
+                var value = pair.Groups[2].Value.Trim();
+                if (inLanguage)
+                {
+                    // "path", or a flow list "[a, b]".
+                    var items = value.StartsWith('[') ? value.Trim('[', ']').Split(',') : [value];
+                    foreach (var item in items.Select(i => i.Trim().Trim('"', '\'')).Where(i => i.Length > 0))
+                    {
+                        yield return item;
+                    }
+                }
+                continue;
+            }
+            if (inLanguage && text.StartsWith('-'))
+            {
+                var value = text[1..].Trim().Trim('"', '\'');
+                if (value.Length > 0)
+                {
+                    yield return value;
+                }
+            }
+        }
+    }
+}

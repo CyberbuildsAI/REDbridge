@@ -302,36 +302,19 @@ public sealed partial class BridgeApi
         _ => JsonDocument.Parse(RedJsonSerializer.Serialize(value)).RootElement.Clone(),
     };
 
-    private static Dictionary<string, Dictionary<ulong, string>> _locTexts = new();
+    private static readonly Dictionary<string, Dictionary<ulong, string>> _locTexts = new();
 
-    /// <summary>LocKey number to text in a language, from the base and Phantom Liberty onscreens files. Loaded once per language.</summary>
+    /// <summary>LocKey number to text in a language (the female variant when there is one), from the loc index. Built once per language.</summary>
     private IReadOnlyDictionary<ulong, string> LocTexts(string language)
     {
+        var index = GameIndex(language);
         lock (_locTexts)
         {
             if (_locTexts.TryGetValue(language, out var known))
             {
                 return known;
             }
-            var texts = new Dictionary<ulong, string>();
-            foreach (var root in new[] { "base", "ep1" })
-            {
-                var file = _host.Archives.Lookup($"{root}\\localization\\{language}\\onscreens\\onscreens.json".Replace('/', '\\'));
-                if (!file.HasValue)
-                {
-                    continue;
-                }
-                if (ReadCr2w(file.Value).RootChunk is JsonResource { Root.Chunk: localizationPersistenceOnScreenEntries entries })
-                {
-                    foreach (var e in entries.Entries)
-                    {
-                        var text = string.IsNullOrEmpty(e.FemaleVariant) ? (string)e.MaleVariant : (string)e.FemaleVariant;
-                        texts[e.PrimaryKey] = text;
-                    }
-                }
-            }
-            _host.Log.Info($"Localization {language}: {texts.Count:N0} texts");
-            return _locTexts[language] = texts;
+            return _locTexts[language] = index.ByKey.ToDictionary(p => p.Key, p => string.IsNullOrEmpty(p.Value.Female) ? p.Value.Male : p.Value.Female);
         }
     }
 }
