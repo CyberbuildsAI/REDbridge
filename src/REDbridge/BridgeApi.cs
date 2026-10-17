@@ -181,7 +181,7 @@ public sealed partial class BridgeApi
     }
 
     /// <summary>
-    /// Extracts resources from one .archive file anywhere on disk, such as a mod in REDdeck's library,
+    /// Extracts resources from one .archive file anywhere on disk, such as a mod in EDGEdeck's library,
     /// as archive.extractMany does for the game's archives. Each item names a resource by path or
     /// hash. No game needed. Resources that fail or are not in the archive are listed, the rest succeed.
     /// </summary>

@@ -120,7 +120,7 @@ With a machine-wide SDK (`winget install --id Microsoft.DotNet.SDK.10 -e`) nothi
 $env:DOTNET_ROOT = "$env:LOCALAPPDATA\Microsoft\dotnet"   # this shell only
 ```
 
-REDcode (`redcode.dotnetRoot`) and REDdeck (`reddeck.dotnetRoot`, which defaults to the per-user folder when it has .NET 10) pass it to the bridge process themselves.
+REDcode (`redcode.dotnetRoot`) and EDGEdeck (`edgedeck.dotnetRoot`, which defaults to the per-user folder when it has .NET 10) pass it to the bridge process themselves.
 
 ### Oodle
 
